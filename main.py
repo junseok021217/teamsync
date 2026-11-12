@@ -340,8 +340,82 @@ friend_requests_db = {}
 friends_db = {}
 request_counter = 1
 
+# ----------------------------------------------------
+# 친구 추가 및 실시간 웹소켓 채팅 API
+# ----------------------------------------------------
+friend_requests_db = {}
+friends_db = {}
+request_counter = 1
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
-    async def connect(self,
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+@app.post("/api/friends/request", summary="친구 신청")
+def send_friend_request(data: FriendRequest):
+    global request_counter
+    if data.user_id == data.target_id:
+        return {"error": "자기 자신에게는 친구 신청을 할 수 없습니다."}
+    
+    for req in friend_requests_db.values():
+        if req["user_id"] == data.user_id and req["target_id"] == data.target_id:
+            return {"status": "already_sent", "message": "이미 친구 신청을 보냈습니다."}
+
+    friend_requests_db[request_counter] = {
+        "id": request_counter,
+        "user_id": data.user_id,
+        "target_id": data.target_id,
+        "status": "pending"
+    }
+    request_counter += 1
+    return {"status": "success", "message": "친구 신청을 전송했습니다."}
+
+@app.get("/api/friends/requests/{user_id}", summary="받은 친구 신청 목록")
+def get_friend_requests(user_id: str):
+    incoming = [req for req in friend_requests_db.values() if req["target_id"] == user_id and req["status"] == "pending"]
+    return {"incoming_requests": incoming}
+
+@app.post("/api/friends/accept", summary="친구 신청 수락")
+def accept_friend_request(data: FriendAction):
+    req = friend_requests_db.get(data.request_id)
+    if not req:
+        return {"error": "존재하지 않는 신청입니다."}
+    
+    req["status"] = "accepted"
+    u1, u2 = req["user_id"], req["target_id"]
+
+    if u1 not in friends_db: friends_db[u1] = []
+    if u2 not in friends_db: friends_db[u2] = []
+    
+    if u2 not in friends_db[u1]: friends_db[u1].append(u2)
+    if u1 not in friends_db[u2]: friends_db[u2].append(u1)
+
+    return {"status": "success", "message": "친구 신청을 수락했습니다."}
+
+@app.get("/api/friends/list/{user_id}", summary="친구 목록 조회")
+def get_friends_list(user_id: str):
+    user_friends = friends_db.get(user_id, [])
+    return {"friends": user_friends}
+
+@app.websocket("/ws/chat/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.broadcast(f"{user_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
