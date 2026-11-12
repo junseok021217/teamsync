@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import jwt
 
-app = FastAPI(title="TeamSync API", description="DISC 기반 공모전/팀플 매칭 및 실시간 팀 채팅 백엔드")
+app = FastAPI(title="TeamSync API", description="DISC 기반 공모전 & 전국 대학교 수업 팀플 매칭 플랫폼")
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,6 +66,13 @@ def init_db():
     CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         author_email TEXT NOT NULL,
+        project_type TEXT DEFAULT 'general',
+        university TEXT DEFAULT '',
+        department TEXT DEFAULT '',
+        course_name TEXT DEFAULT '',
+        professor_name TEXT DEFAULT '',
+        author_role_type TEXT DEFAULT '학생',
+        max_members INTEGER DEFAULT 4,
         category TEXT NOT NULL,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
@@ -79,6 +86,13 @@ def init_db():
     )
     """)
     ensure_column(cur, "projects", "image_url", "TEXT")
+    ensure_column(cur, "projects", "project_type", "TEXT DEFAULT 'general'")
+    ensure_column(cur, "projects", "university", "TEXT DEFAULT ''")
+    ensure_column(cur, "projects", "department", "TEXT DEFAULT ''")
+    ensure_column(cur, "projects", "course_name", "TEXT DEFAULT ''")
+    ensure_column(cur, "projects", "professor_name", "TEXT DEFAULT ''")
+    ensure_column(cur, "projects", "author_role_type", "TEXT DEFAULT '학생'")
+    ensure_column(cur, "projects", "max_members", "INTEGER DEFAULT 4")
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS project_applications (
@@ -109,6 +123,19 @@ def init_db():
     CREATE TABLE IF NOT EXISTS chat_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
+        sender_email TEXT NOT NULL,
+        sender_name TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS pre_chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        inquirer_email TEXT NOT NULL,
+        inquirer_name TEXT NOT NULL,
         sender_email TEXT NOT NULL,
         sender_name TEXT NOT NULL,
         message TEXT NOT NULL,
@@ -153,7 +180,18 @@ class ProfileUpdate(BaseModel):
 class DiscSubmit(BaseModel):
     answers: Dict[str, int]
 
+class InitialMemberItem(BaseModel):
+    name: str
+    role: Optional[str] = "팀원"
+
 class ProjectCreate(BaseModel):
+    project_type: Optional[str] = "general"
+    university: Optional[str] = ""
+    department: Optional[str] = ""
+    course_name: Optional[str] = ""
+    professor_name: Optional[str] = ""
+    author_role_type: Optional[str] = "학생"
+    max_members: Optional[int] = 4
     category: str
     title: str
     description: str
@@ -163,6 +201,7 @@ class ProjectCreate(BaseModel):
     commitment_level: Optional[str] = ""
     available_time: Optional[str] = ""
     image_url: Optional[str] = ""
+    initial_members: List[InitialMemberItem] = []
 
 class ApplyPayload(BaseModel):
     message: Optional[str] = "열심히 참여하겠습니다!"
@@ -170,8 +209,16 @@ class ApplyPayload(BaseModel):
 class ChatCreate(BaseModel):
     message: str
 
+class PreChatCreate(BaseModel):
+    target_email: Optional[str] = None
+    message: str
+
 class KickPayload(BaseModel):
     member_email: str
+
+class AddMemberPayload(BaseModel):
+    name: str
+    role: Optional[str] = "팀원"
 
 # ----------------------------------------------------
 # 인증 및 유틸 함수
@@ -212,7 +259,7 @@ def serve_frontend():
     return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
 
 # ----------------------------------------------------
-# 회원 API
+# 회원 및 프로필 조회 API
 # ----------------------------------------------------
 @app.post("/api/auth/signup")
 def signup(data: UserSignUp):
@@ -259,6 +306,36 @@ def read_my_profile(current_user: dict = Depends(get_current_user)):
     current_user["available_time_start"] = current_user.get("available_time_start") or "09:00"
     current_user["available_time_end"] = current_user.get("available_time_end") or "18:00"
     return current_user
+
+@app.get("/api/users/profile")
+def read_public_profile(email: str):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    conn.close()
+    if not user:
+        return {
+            "email": email,
+            "name": "수동 등록 팀원",
+            "age": None,
+            "major": "미입력",
+            "education": "미입력",
+            "certifications": "-",
+            "awards": "-",
+            "portfolio_url": "",
+            "disc_type": None,
+            "disc_scores": {"D": 0, "I": 0, "S": 0, "C": 0},
+            "can_present": True,
+            "preferred_roles": [],
+            "available_time_start": "09:00",
+            "available_time_end": "18:00"
+        }
+    u = dict(user)
+    u.pop("password_hash", None)
+    u["disc_scores"] = json.loads(u.get("disc_scores") or '{"D":0,"I":0,"S":0,"C":0}')
+    u["preferred_roles"] = json.loads(u.get("preferred_roles") or "[]")
+    u["available_time_start"] = u.get("available_time_start") or "09:00"
+    u["available_time_end"] = u.get("available_time_end") or "18:00"
+    return u
 
 @app.put("/api/users/me")
 def update_my_profile(update: ProfileUpdate, current_user: dict = Depends(get_current_user)):
@@ -376,43 +453,90 @@ def submit_disc(payload: DiscSubmit, current_user: dict = Depends(get_current_us
     return {"message": "DISC 진단 결과가 프로필에 반영되었습니다!", "disc_type": primary_type, "disc_scores": scores}
 
 # ----------------------------------------------------
-# 공모전 / 팀원 모집 / 지원 / 수락 / 강퇴 API
+# 공모전 & 학교 수업 팀플 API
 # ----------------------------------------------------
 @app.get("/api/projects")
-def get_projects():
+def get_projects(project_type: Optional[str] = None, university: Optional[str] = None):
     conn = get_db()
-    rows = conn.execute("""
+    query = """
         SELECT p.*, u.name as author_name, u.disc_type as author_disc
         FROM projects p
         LEFT JOIN users u ON p.author_email = u.email
-        ORDER BY p.id DESC
-    """).fetchall()
+        WHERE 1=1
+    """
+    params = []
+    if project_type:
+        query += " AND p.project_type = ?"
+        params.append(project_type)
+    if university:
+        query += " AND p.university = ?"
+        params.append(university)
+    query += " ORDER BY p.id DESC"
 
+    rows = conn.execute(query, params).fetchall()
     projects = []
     for r in rows:
         p = dict(r)
         p["needed_roles"] = json.loads(p["needed_roles"] or "[]")
         p["needed_disc"] = json.loads(p["needed_disc"] or "[]")
-        mem_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (p["id"],)).fetchone()[0]
+        p["max_members"] = p.get("max_members") or 4
+        mems = conn.execute("SELECT member_name, member_email, role FROM project_members WHERE project_id = ?", (p["id"],)).fetchall()
         pend_cnt = conn.execute("SELECT COUNT(*) FROM project_applications WHERE project_id = ? AND status = 'pending'", (p["id"],)).fetchone()[0]
-        p["member_count"] = mem_cnt
+        p["members"] = [dict(m) for m in mems]
+        p["member_count"] = len(mems)
         p["pending_count"] = pend_cnt
         projects.append(p)
     conn.close()
     return projects
+
+@app.get("/api/my-projects")
+def get_my_created_projects(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM projects WHERE author_email = ? ORDER BY id DESC",
+        (current_user["email"],)
+    ).fetchall()
+    result = []
+    for r in rows:
+        p = dict(r)
+        p["needed_roles"] = json.loads(p["needed_roles"] or "[]")
+        p["needed_disc"] = json.loads(p["needed_disc"] or "[]")
+        p["max_members"] = p.get("max_members") or 4
+        mems = conn.execute(
+            "SELECT member_name, member_email, role FROM project_members WHERE project_id = ?",
+            (p["id"],)
+        ).fetchall()
+        apps = conn.execute(
+            """SELECT pa.*, u.major, u.disc_type, u.available_time_start, u.available_time_end
+               FROM project_applications pa
+               LEFT JOIN users u ON pa.applicant_email = u.email
+               WHERE pa.project_id = ? AND pa.status = 'pending'""",
+            (p["id"],)
+        ).fetchall()
+        p["members"] = [dict(m) for m in mems]
+        p["member_count"] = len(mems)
+        p["pending_applications"] = [dict(a) for a in apps]
+        p["pending_count"] = len(apps)
+        result.append(p)
+    conn.close()
+    return result
 
 @app.post("/api/projects")
 def create_project(proj: ProjectCreate, current_user: dict = Depends(get_current_user)):
     conn = get_db()
     cur = conn.cursor()
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    max_mem = max(int(proj.max_members or 4), 2)
     cur.execute(
         """INSERT INTO projects 
-           (author_email, category, title, description, meeting_type, needed_roles, needed_disc, commitment_level, available_time, image_url, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (author_email, project_type, university, department, course_name, professor_name, author_role_type, max_members,
+            category, title, description, meeting_type, needed_roles, needed_disc, commitment_level, available_time, image_url, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
-            current_user["email"], proj.category, proj.title, proj.description,
-            proj.meeting_type,
+            current_user["email"], proj.project_type or "general",
+            proj.university or "", proj.department or "", proj.course_name or "",
+            proj.professor_name or "", proj.author_role_type or "학생", max_mem,
+            proj.category, proj.title, proj.description, proj.meeting_type,
             json.dumps(proj.needed_roles, ensure_ascii=False),
             json.dumps(proj.needed_disc, ensure_ascii=False),
             proj.commitment_level, proj.available_time, proj.image_url,
@@ -420,17 +544,52 @@ def create_project(proj: ProjectCreate, current_user: dict = Depends(get_current
         )
     )
     project_id = cur.lastrowid
+    leader_role = f"팀장({proj.author_role_type})" if proj.project_type == "course" else "팀장"
     cur.execute(
-        "INSERT OR IGNORE INTO project_members (project_id, member_email, member_name, role) VALUES (?, ?, ?, '팀장')",
-        (project_id, current_user["email"], current_user["name"])
+        "INSERT OR IGNORE INTO project_members (project_id, member_email, member_name, role) VALUES (?, ?, ?, ?)",
+        (project_id, current_user["email"], current_user["name"], leader_role)
     )
+    for idx, im in enumerate(proj.initial_members or []):
+        if im.name.strip():
+            pseudo_email = f"manual_{project_id}_{idx+1}@teamsync.local"
+            cur.execute(
+                "INSERT OR IGNORE INTO project_members (project_id, member_email, member_name, role) VALUES (?, ?, ?, ?)",
+                (project_id, pseudo_email, im.name.strip(), im.role or "팀원")
+            )
+
     cur.execute(
         "INSERT INTO chat_messages (project_id, sender_email, sender_name, message, created_at) VALUES (?, 'system', '시스템', ?, ?)",
-        (project_id, f"🎉 '{proj.title}' 팀 채팅방이 개설되었습니다. 수락된 팀원들과 자유롭게 대화해보세요!", now_str)
+        (project_id, f"🎉 '{proj.title}' 팀 채팅방이 개설되었습니다! (정원 {max_mem}명)", now_str)
     )
     conn.commit()
     conn.close()
-    return {"message": "모집글이 등록되었으며 팀 채팅방이 생성되었습니다!", "project_id": project_id}
+    return {"message": "모집글이 등록되었으며 팀 채팅방이 개설되었습니다!", "project_id": project_id}
+
+@app.post("/api/projects/{project_id}/add-member")
+def add_manual_member(project_id: int, payload: AddMemberPayload, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not proj or proj["author_email"] != current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="팀장만 팀원을 직접 추가할 수 있습니다.")
+    cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (project_id,)).fetchone()[0]
+    if cur_cnt >= (proj["max_members"] or 4):
+        conn.close()
+        raise HTTPException(status_code=400, detail="이미 목표 모집 인원이 가득 찼습니다.")
+
+    pseudo_email = f"manual_{project_id}_{int(datetime.datetime.now().timestamp()*1000)}@teamsync.local"
+    conn.execute(
+        "INSERT INTO project_members (project_id, member_email, member_name, role) VALUES (?, ?, ?, ?)",
+        (project_id, pseudo_email, payload.name.strip(), payload.role or "팀원")
+    )
+    now_str = datetime.datetime.now().strftime("%H:%M")
+    conn.execute(
+        "INSERT INTO chat_messages (project_id, sender_email, sender_name, message, created_at) VALUES (?, 'system', '시스템', ?, ?)",
+        (project_id, f"➕ 팀장이 '{payload.name.strip()}'({payload.role or '팀원'})님을 팀원으로 등록했습니다.", now_str)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": f"{payload.name}님이 팀원으로 등록되었습니다."}
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: int, current_user: dict = Depends(get_current_user)):
@@ -443,6 +602,7 @@ def delete_project(project_id: int, current_user: dict = Depends(get_current_use
     conn.execute("DELETE FROM project_applications WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM project_members WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM chat_messages WHERE project_id = ?", (project_id,))
+    conn.execute("DELETE FROM pre_chat_messages WHERE project_id = ?", (project_id,))
     conn.commit()
     conn.close()
     return {"message": "모집글이 삭제되었습니다."}
@@ -453,10 +613,15 @@ def apply_project(project_id: int, payload: Optional[ApplyPayload] = None, curre
     proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
     if not proj:
         conn.close()
-        raise HTTPException(status_code=404, detail="공모전 글을 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="모집글을 찾을 수 없습니다.")
     if proj["author_email"] == current_user["email"]:
         conn.close()
         raise HTTPException(status_code=400, detail="본인이 개설한 모집글에는 이미 팀장으로 참여 중입니다.")
+
+    cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (project_id,)).fetchone()[0]
+    if cur_cnt >= (proj["max_members"] or 4):
+        conn.close()
+        raise HTTPException(status_code=400, detail="모집 정원이 마감된 팀입니다.")
 
     existing = conn.execute(
         "SELECT * FROM project_applications WHERE project_id = ? AND applicant_email = ?",
@@ -464,13 +629,8 @@ def apply_project(project_id: int, payload: Optional[ApplyPayload] = None, curre
     ).fetchone()
     if existing:
         conn.close()
-        status_kor = {
-            "pending": "심사 대기 중",
-            "accepted": "이미 수락됨",
-            "rejected": "거절됨",
-            "kicked": "강퇴됨"
-        }.get(existing["status"], existing["status"])
-        raise HTTPException(status_code=400, detail=f"이미 지원한 이력이 있는 공모전입니다. (현재 상태: {status_kor})")
+        status_kor = {"pending": "심사 대기 중", "accepted": "이미 수락됨", "rejected": "거절됨", "kicked": "강퇴됨"}.get(existing["status"], existing["status"])
+        raise HTTPException(status_code=400, detail=f"이미 지원한 내역이 있습니다. (상태: {status_kor})")
 
     msg = payload.message if payload and payload.message else "열심히 참여하겠습니다!"
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -480,13 +640,13 @@ def apply_project(project_id: int, payload: Optional[ApplyPayload] = None, curre
     )
     conn.commit()
     conn.close()
-    return {"message": "공모전 지원이 완료되었습니다! 작성자가 수락하면 팀 채팅방에 자동 초대됩니다."}
+    return {"message": "지원이 완료되었습니다! 수락 전이라도 '수락 전 사전채팅'으로 팀장과 대화할 수 있습니다."}
 
 @app.get("/api/my-applications")
 def get_my_applications(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     rows = conn.execute("""
-        SELECT pa.*, p.title as project_title, p.category
+        SELECT pa.*, p.title as project_title, p.category, p.author_email
         FROM project_applications pa
         JOIN projects p ON pa.project_id = p.id
         WHERE pa.applicant_email = ?
@@ -533,6 +693,10 @@ def application_action(app_id: int, action_data: dict, current_user: dict = Depe
 
     now_str = datetime.datetime.now().strftime("%H:%M")
     if action == "accept":
+        cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (proj["id"],)).fetchone()[0]
+        if cur_cnt >= (proj["max_members"] or 4):
+            conn.close()
+            raise HTTPException(status_code=400, detail="목표 팀원 정원이 모두 차서 더 이상 수락할 수 없습니다.")
         conn.execute("UPDATE project_applications SET status = 'accepted' WHERE id = ?", (app_id,))
         conn.execute(
             "INSERT OR IGNORE INTO project_members (project_id, member_email, member_name, role) VALUES (?, ?, ?, '팀원')",
@@ -558,10 +722,7 @@ def application_action(app_id: int, action_data: dict, current_user: dict = Depe
 def kick_team_member(project_id: int, payload: KickPayload, current_user: dict = Depends(get_current_user)):
     conn = get_db()
     proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
-    if not proj:
-        conn.close()
-        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
-    if proj["author_email"] != current_user["email"]:
+    if not proj or proj["author_email"] != current_user["email"]:
         conn.close()
         raise HTTPException(status_code=403, detail="팀장만 팀원을 강퇴할 수 있습니다.")
     if payload.member_email == current_user["email"]:
@@ -577,18 +738,12 @@ def kick_team_member(project_id: int, payload: KickPayload, current_user: dict =
         raise HTTPException(status_code=404, detail="해당 팀원을 찾을 수 없습니다.")
 
     kicked_name = member["member_name"]
-    conn.execute(
-        "DELETE FROM project_members WHERE project_id = ? AND member_email = ?",
-        (project_id, payload.member_email)
-    )
-    conn.execute(
-        "UPDATE project_applications SET status = 'kicked' WHERE project_id = ? AND applicant_email = ?",
-        (project_id, payload.member_email)
-    )
+    conn.execute("DELETE FROM project_members WHERE project_id = ? AND member_email = ?", (project_id, payload.member_email))
+    conn.execute("UPDATE project_applications SET status = 'kicked' WHERE project_id = ? AND applicant_email = ?", (project_id, payload.member_email))
     now_str = datetime.datetime.now().strftime("%H:%M")
     conn.execute(
         "INSERT INTO chat_messages (project_id, sender_email, sender_name, message, created_at) VALUES (?, 'system', '시스템', ?, ?)",
-        (project_id, f"🚫 {kicked_name}님이 팀장에 의해 팀에서 강퇴되었습니다.", now_str)
+        (project_id, f"🚫 {kicked_name}님이 팀에서 제외되었습니다.", now_str)
     )
     conn.commit()
     conn.close()
@@ -605,8 +760,8 @@ def recommend_members(project_id: int):
     needed_roles = json.loads(proj["needed_roles"] or "[]")
 
     candidates = conn.execute(
-        """SELECT email, name, major, disc_type, disc_scores, preferred_roles, can_present,
-                  available_time_start, available_time_end, portfolio_url
+        """SELECT email, name, major, education, disc_type, disc_scores, preferred_roles, can_present,
+                  available_time_start, available_time_end, portfolio_url, certifications, awards
            FROM users WHERE is_seeking = 1 AND email != ?""",
         (proj["author_email"],)
     ).fetchall()
@@ -634,16 +789,16 @@ def recommend_members(project_id: int):
         recommendations.append(c_dict)
 
     recommendations.sort(key=lambda x: x["match_score"], reverse=True)
-    return {"project_title": proj["title"], "recommended_users": recommendations}
+    return {"project_id": project_id, "project_title": proj["title"], "recommended_users": recommendations}
 
 # ----------------------------------------------------
-# 팀 단체 채팅 API (DB 영구 저장 + 실시간 폴링)
+# 팀 단체 채팅 & 수락 전 1:1 사전 채팅 API
 # ----------------------------------------------------
 @app.get("/api/my-teams")
 def get_my_teams(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     rows = conn.execute("""
-        SELECT p.id, p.title, p.category, p.meeting_type, p.author_email, pm.role
+        SELECT p.id, p.title, p.category, p.project_type, p.university, p.course_name, p.max_members, p.author_email, pm.role
         FROM project_members pm
         JOIN projects p ON pm.project_id = p.id
         WHERE pm.member_email = ?
@@ -668,7 +823,7 @@ def get_project_members(project_id: int):
         FROM project_members pm
         LEFT JOIN users u ON pm.member_email = u.email
         WHERE pm.project_id = ?
-        ORDER BY CASE WHEN pm.role = '팀장' THEN 0 ELSE 1 END, pm.member_name ASC
+        ORDER BY CASE WHEN pm.role LIKE '팀장%' THEN 0 ELSE 1 END, pm.member_name ASC
     """, (project_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -682,7 +837,7 @@ def get_chat_messages(project_id: int, after_id: int = 0, current_user: dict = D
     ).fetchone()
     if not is_mem:
         conn.close()
-        raise HTTPException(status_code=403, detail="해당 팀의 멤버만 채팅을 볼 수 있습니다.")
+        raise HTTPException(status_code=403, detail="해당 팀의 멤버만 단체 채팅을 볼 수 있습니다.")
 
     rows = conn.execute(
         "SELECT id, project_id, sender_email, sender_name, message, created_at FROM chat_messages WHERE project_id = ? AND id > ? ORDER BY id ASC",
@@ -724,3 +879,89 @@ def post_chat_message(project_id: int, payload: ChatCreate, current_user: dict =
         "message": msg_text,
         "created_at": now_str
     }
+
+# 수락 전 사전 채팅 목록 조회
+@app.get("/api/pre-chats")
+def get_my_pre_chats(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    my_email = current_user["email"]
+    rows = conn.execute("""
+        SELECT DISTINCT pcm.project_id, pcm.inquirer_email, pcm.inquirer_name,
+               p.title as project_title, p.author_email, u.name as author_name
+        FROM pre_chat_messages pcm
+        JOIN projects p ON pcm.project_id = p.id
+        LEFT JOIN users u ON p.author_email = u.email
+        WHERE pcm.inquirer_email = ? OR p.author_email = ?
+        ORDER BY pcm.id DESC
+    """, (my_email, my_email)).fetchall()
+
+    threads = []
+    seen = set()
+    for r in rows:
+        key = (r["project_id"], r["inquirer_email"])
+        if key in seen:
+            continue
+        seen.add(key)
+        d = dict(r)
+        last_m = conn.execute(
+            "SELECT message, created_at FROM pre_chat_messages WHERE project_id = ? AND inquirer_email = ? ORDER BY id DESC LIMIT 1",
+            (r["project_id"], r["inquirer_email"])
+        ).fetchone()
+        d["last_message"] = last_m["message"] if last_m else ""
+        d["last_time"] = last_m["created_at"] if last_m else ""
+        threads.append(d)
+    conn.close()
+    return threads
+
+@app.get("/api/projects/{project_id}/pre-chat")
+def get_pre_chat_messages(project_id: int, inquirer_email: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not proj:
+        conn.close()
+        raise HTTPException(status_code=404, detail="모집글을 찾을 수 없습니다.")
+
+    target_inquirer = inquirer_email if (proj["author_email"] == current_user["email"] and inquirer_email) else current_user["email"]
+    if current_user["email"] not in (proj["author_email"], target_inquirer):
+        conn.close()
+        raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
+
+    rows = conn.execute(
+        "SELECT * FROM pre_chat_messages WHERE project_id = ? AND inquirer_email = ? ORDER BY id ASC",
+        (project_id, target_inquirer)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/projects/{project_id}/pre-chat")
+def send_pre_chat_message(project_id: int, payload: PreChatCreate, current_user: dict = Depends(get_current_user)):
+    text = payload.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="메시지를 입력해 주세요.")
+
+    conn = get_db()
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not proj:
+        conn.close()
+        raise HTTPException(status_code=404, detail="모집글을 찾을 수 없습니다.")
+
+    if current_user["email"] == proj["author_email"]:
+        if not payload.target_email:
+            conn.close()
+            raise HTTPException(status_code=400, detail="대화할 지원자 이메일이 필요합니다.")
+        inquirer_email = payload.target_email
+        u_row = conn.execute("SELECT name FROM users WHERE email = ?", (inquirer_email,)).fetchone()
+        inquirer_name = u_row["name"] if u_row else inquirer_email
+    else:
+        inquirer_email = current_user["email"]
+        inquirer_name = current_user["name"]
+
+    now_str = datetime.datetime.now().strftime("%H:%M")
+    conn.execute(
+        """INSERT INTO pre_chat_messages (project_id, inquirer_email, inquirer_name, sender_email, sender_name, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (project_id, inquirer_email, inquirer_name, current_user["email"], current_user["name"], text, now_str)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "전송 완료"}
