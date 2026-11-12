@@ -4,6 +4,8 @@ import hashlib
 import datetime
 from typing import Optional, List, Dict
 from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi.responses import HTMLResponse  # 👈 이 코드를 추가해 주세요!
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import jwt
