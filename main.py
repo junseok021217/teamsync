@@ -302,3 +302,13 @@ def recommend_members(project_id: int):
 
     recommendations.sort(key=lambda x: x["match_score"], reverse=True)
     return {"project_title": proj["title"], "recommended_users": recommendations}
+from fastapi.responses import HTMLResponse
+import os
+
+@app.get("/", response_class=HTMLResponse)
+def serve_frontend():
+    # 같은 폴더에 있는 index.html 파일을 읽어서 브라우저에 띄워줍니다.
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h3>index.html 파일을 찾을 수 없습니다. 백엔드 폴더에 index.html을 업로드해 주세요!</h3>"
