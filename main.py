@@ -133,9 +133,12 @@ def get_current_user(authorization: str = Header(..., description="Bearer <토�
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to TeamSync API!"}
+@app.get("/", response_class=HTMLResponse)
+def serve_frontend():
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
 
 @app.post("/api/auth/signup", summary="회원가입")
 def signup(data: UserSignUp):
