@@ -316,3 +316,109 @@ def serve_frontend():
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
     return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
+from fastapi import FastAPI, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from typing import List, Optional
+import os
+
+app = FastAPI()
+
+# 친구 요청 및 관계 저장을 위한 임시 메모리 DB 구조
+class FriendRequest(BaseModel):
+    user_id: str
+    target_id: str
+
+class FriendAction(BaseModel):
+    request_id: int
+
+friend_requests_db = {}
+friends_db = {}
+request_counter = 1
+
+# 실시간 채팅을 위한 웹소켓 매니저
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_frontend():
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
+
+
+@app.post("/api/friends/request")
+def send_friend_request(data: FriendRequest):
+    global request_counter
+    if data.user_id == data.target_id:
+        return {"error": "자기 자신에게는 친구 신청을 할 수 없습니다."}
+    
+    for req in friend_requests_db.values():
+        if req["user_id"] == data.user_id and req["target_id"] == data.target_id:
+            return {"status": "already_sent", "message": "이미 친구 신청을 보냈습니다."}
+
+    friend_requests_db[request_counter] = {
+        "id": request_counter,
+        "user_id": data.user_id,
+        "target_id": data.target_id,
+        "status": "pending"
+    }
+    request_counter += 1
+    return {"status": "success", "message": "친구 신청을 전송했습니다."}
+
+
+@app.get("/api/friends/requests/{user_id}")
+def get_friend_requests(user_id: str):
+    incoming = [req for req in friend_requests_db.values() if req["target_id"] == user_id and req["status"] == "pending"]
+    return {"incoming_requests": incoming}
+
+
+@app.post("/api/friends/accept")
+def accept_friend_request(data: FriendAction):
+    req = friend_requests_db.get(data.request_id)
+    if not req:
+        return {"error": "존재하지 않는 신청입니다."}
+    
+    req["status"] = "accepted"
+    u1, u2 = req["user_id"], req["target_id"]
+
+    if u1 not in friends_db: friends_db[u1] = []
+    if u2 not in friends_db: friends_db[u2] = []
+    
+    if u2 not in friends_db[u1]: friends_db[u1].append(u2)
+    if u1 not in friends_db[u2]: friends_db[u2].append(u1)
+
+    return {"status": "success", "message": "친구 신청을 수락했습니다."}
+
+
+@app.get("/api/friends/list/{user_id}")
+def get_friends_list(user_id: str):
+    user_friends = friends_db.get(user_id, [])
+    return {"friends": user_friends}
+
+
+@app.websocket("/ws/chat/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.broadcast(f"{user_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
