@@ -4,13 +4,13 @@ import hashlib
 import datetime
 import os
 from typing import Optional, List, Dict
-from fastapi import FastAPI, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import jwt
 
-app = FastAPI(title="TeamSync API", description="DISC 기반 공모전/팀플 매칭 및 실시간 팀 채팅 플랫폼")
+app = FastAPI(title="TeamSync API", description="DISC 기반 공모전/팀플 매칭 및 실시간 팀 채팅 백엔드")
 
 app.add_middleware(
     CORSMiddleware,
@@ -170,6 +170,9 @@ class ApplyPayload(BaseModel):
 class ChatCreate(BaseModel):
     message: str
 
+class KickPayload(BaseModel):
+    member_email: str
+
 # ----------------------------------------------------
 # 인증 및 유틸 함수
 # ----------------------------------------------------
@@ -194,8 +197,10 @@ def get_current_user(authorization: Optional[str] = Header(None)):
         user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         conn.close()
         if not user:
-            raise HTTPException(status_code=401, detail="존재하지 않는 사용자입니다.")
+            raise HTTPException(status_code=401, detail="존재하지 않는 사용자입니다. 다시 로그인해 주세요.")
         return dict(user)
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="세션이 만료되었습니다. 다시 로그인해 주세요.")
 
@@ -371,7 +376,7 @@ def submit_disc(payload: DiscSubmit, current_user: dict = Depends(get_current_us
     return {"message": "DISC 진단 결과가 프로필에 반영되었습니다!", "disc_type": primary_type, "disc_scores": scores}
 
 # ----------------------------------------------------
-# 공모전 / 팀원 모집 / 지원 / 수락 API
+# 공모전 / 팀원 모집 / 지원 / 수락 / 강퇴 API
 # ----------------------------------------------------
 @app.get("/api/projects")
 def get_projects():
@@ -459,8 +464,13 @@ def apply_project(project_id: int, payload: Optional[ApplyPayload] = None, curre
     ).fetchone()
     if existing:
         conn.close()
-        status_kor = {"pending": "심사 대기 중", "accepted": "이미 수락됨", "rejected": "거절됨"}.get(existing["status"], existing["status"])
-        raise HTTPException(status_code=400, detail=f"이미 지원한 공모전입니다. (현재 상태: {status_kor})")
+        status_kor = {
+            "pending": "심사 대기 중",
+            "accepted": "이미 수락됨",
+            "rejected": "거절됨",
+            "kicked": "강퇴됨"
+        }.get(existing["status"], existing["status"])
+        raise HTTPException(status_code=400, detail=f"이미 지원한 이력이 있는 공모전입니다. (현재 상태: {status_kor})")
 
     msg = payload.message if payload and payload.message else "열심히 참여하겠습니다!"
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -521,7 +531,7 @@ def application_action(app_id: int, action_data: dict, current_user: dict = Depe
         conn.close()
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
 
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_str = datetime.datetime.now().strftime("%H:%M")
     if action == "accept":
         conn.execute("UPDATE project_applications SET status = 'accepted' WHERE id = ?", (app_id,))
         conn.execute(
@@ -543,6 +553,46 @@ def application_action(app_id: int, action_data: dict, current_user: dict = Depe
     else:
         conn.close()
         raise HTTPException(status_code=400, detail="올바르지 않은 요청입니다.")
+
+@app.post("/api/projects/{project_id}/kick")
+def kick_team_member(project_id: int, payload: KickPayload, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not proj:
+        conn.close()
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
+    if proj["author_email"] != current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="팀장만 팀원을 강퇴할 수 있습니다.")
+    if payload.member_email == current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="팀장 본인은 강퇴할 수 없습니다.")
+
+    member = conn.execute(
+        "SELECT * FROM project_members WHERE project_id = ? AND member_email = ?",
+        (project_id, payload.member_email)
+    ).fetchone()
+    if not member:
+        conn.close()
+        raise HTTPException(status_code=404, detail="해당 팀원을 찾을 수 없습니다.")
+
+    kicked_name = member["member_name"]
+    conn.execute(
+        "DELETE FROM project_members WHERE project_id = ? AND member_email = ?",
+        (project_id, payload.member_email)
+    )
+    conn.execute(
+        "UPDATE project_applications SET status = 'kicked' WHERE project_id = ? AND applicant_email = ?",
+        (project_id, payload.member_email)
+    )
+    now_str = datetime.datetime.now().strftime("%H:%M")
+    conn.execute(
+        "INSERT INTO chat_messages (project_id, sender_email, sender_name, message, created_at) VALUES (?, 'system', '시스템', ?, ?)",
+        (project_id, f"🚫 {kicked_name}님이 팀장에 의해 팀에서 강퇴되었습니다.", now_str)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": f"{kicked_name}님을 팀에서 강퇴했습니다."}
 
 @app.get("/api/projects/{project_id}/recommend-members")
 def recommend_members(project_id: int):
@@ -587,13 +637,13 @@ def recommend_members(project_id: int):
     return {"project_title": proj["title"], "recommended_users": recommendations}
 
 # ----------------------------------------------------
-# 팀 단체 채팅 API (DB 영구 저장 + REST 폴링 + WebSocket 하이브리드)
+# 팀 단체 채팅 API (DB 영구 저장 + 실시간 폴링)
 # ----------------------------------------------------
 @app.get("/api/my-teams")
 def get_my_teams(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     rows = conn.execute("""
-        SELECT p.id, p.title, p.category, p.meeting_type, pm.role
+        SELECT p.id, p.title, p.category, p.meeting_type, p.author_email, pm.role
         FROM project_members pm
         JOIN projects p ON pm.project_id = p.id
         WHERE pm.member_email = ?
@@ -618,6 +668,7 @@ def get_project_members(project_id: int):
         FROM project_members pm
         LEFT JOIN users u ON pm.member_email = u.email
         WHERE pm.project_id = ?
+        ORDER BY CASE WHEN pm.role = '팀장' THEN 0 ELSE 1 END, pm.member_name ASC
     """, (project_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -640,35 +691,8 @@ def get_chat_messages(project_id: int, after_id: int = 0, current_user: dict = D
     conn.close()
     return [dict(r) for r in rows]
 
-class ConnectionManager:
-    def __init__(self):
-        self.rooms: Dict[int, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, project_id: int):
-        await websocket.accept()
-        if project_id not in self.rooms:
-            self.rooms[project_id] = []
-        self.rooms[project_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, project_id: int):
-        if project_id in self.rooms and websocket in self.rooms[project_id]:
-            self.rooms[project_id].remove(websocket)
-
-    async def broadcast_json(self, project_id: int, data: dict):
-        if project_id in self.rooms:
-            dead = []
-            for ws in self.rooms[project_id]:
-                try:
-                    await ws.send_text(json.dumps(data, ensure_ascii=False))
-                except Exception:
-                    dead.append(ws)
-            for ws in dead:
-                self.disconnect(ws, project_id)
-
-manager = ConnectionManager()
-
 @app.post("/api/projects/{project_id}/messages")
-async def post_chat_message(project_id: int, payload: ChatCreate, current_user: dict = Depends(get_current_user)):
+def post_chat_message(project_id: int, payload: ChatCreate, current_user: dict = Depends(get_current_user)):
     msg_text = payload.message.strip()
     if not msg_text:
         raise HTTPException(status_code=400, detail="메시지를 입력해주세요.")
@@ -692,7 +716,7 @@ async def post_chat_message(project_id: int, payload: ChatCreate, current_user: 
     conn.commit()
     conn.close()
 
-    msg_obj = {
+    return {
         "id": msg_id,
         "project_id": project_id,
         "sender_email": current_user["email"],
@@ -700,14 +724,3 @@ async def post_chat_message(project_id: int, payload: ChatCreate, current_user: 
         "message": msg_text,
         "created_at": now_str
     }
-    await manager.broadcast_json(project_id, msg_obj)
-    return msg_obj
-
-@app.websocket("/ws/chat/{project_id}/{user_name}")
-async def websocket_chat_endpoint(websocket: WebSocket, project_id: int, user_name: str):
-    await manager.connect(websocket, project_id)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, project_id)
