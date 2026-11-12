@@ -169,7 +169,7 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">공모전/프로젝트 제목 *</label>
-                    <input id="proj-title" type="text" placeholder="예: 2026 데이터 경제 분석 공모전 함께하실 팀원 구합니다!" class="w-full border rounded-xl px-3.5 py-2.5 text-sm font-medium">
+                    <input id="proj-title" type="text" placeholder="예: 2026 데이터 분석 공모전 함께하실 팀원 구합니다!" class="w-full border rounded-xl px-3.5 py-2.5 text-sm font-medium">
                 </div>
 
                 <div>
@@ -696,7 +696,7 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">이메일</label>
-                    <input id="auth-email" type="email" placeholder="example@ulsan.ac.kr" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                    <input id="auth-email" type="email" placeholder="이메일 입력" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">비밀번호</label>
@@ -705,16 +705,16 @@
                 <div id="signup-extra-fields" class="hidden space-y-3 pt-1">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">이름 (실명 또는 닉네임)</label>
-                        <input id="auth-name" type="text" placeholder="오준석" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                        <input id="auth-name" type="text" placeholder="이름 또는 닉네임 입력" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">나이</label>
-                            <input id="auth-age" type="number" placeholder="23" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                            <input id="auth-age" type="number" placeholder="나이 입력" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">전공</label>
-                            <input id="auth-major" type="text" placeholder="데이터경제학" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                            <input id="auth-major" type="text" placeholder="전공 입력" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
                         </div>
                     </div>
                 </div>
@@ -830,7 +830,7 @@
         let myPreChatsCache = [];
         let uploadedImageDataUrl = "";
 
-        // 전국 대학교 데이터 (울산대학교 최상단 배치 + 전국 주요 대학)
+        // 전국 대학교 데이터
         const UNIVERSITIES = [
             { name: "울산대학교", region: "울산·부산·경남", badge: "🔥 인기 캠퍼스" },
             { name: "UNIST (울산과학기술원)", region: "울산·부산·경남", badge: "울산" },
