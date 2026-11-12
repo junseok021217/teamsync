@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeamSync - DISC 기반 공모전 & 팀플 매칭 플랫폼</title>
+    <title>TeamSync - DISC 기반 공모전 & 전국 대학교 수업 팀플 매칭</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <style>
         body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
-        .bar-transition { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        .tab-active { color: #4f46e5; font-weight: 700; border-bottom: 2px solid #4f46e5; }
+        .bar-transition { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-active { color: #4f46e5; font-weight: 800; border-bottom: 2px solid #4f46e5; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
     </style>
@@ -17,22 +17,23 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
     <!-- 상단 네비게이션 -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+    <nav class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
             <div class="flex items-center space-x-2.5 cursor-pointer" onclick="showTab('home')">
                 <div class="bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-black px-3 py-1.5 rounded-xl text-lg shadow-sm">TS</div>
                 <div>
                     <span class="font-extrabold text-xl tracking-tight text-slate-900">TeamSync</span>
-                    <span class="hidden sm:inline-block text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full ml-1">DISC 매칭</span>
+                    <span class="hidden sm:inline-block text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full ml-1">대학·공모전 매칭</span>
                 </div>
             </div>
 
             <div class="hidden md:flex space-x-1 h-full items-center text-sm font-medium text-slate-600">
-                <button id="nav-home" onclick="showTab('home')" class="px-4 h-full flex items-center hover:text-indigo-600 transition tab-active">홈</button>
-                <button id="nav-projects" onclick="showTab('projects')" class="px-4 h-full flex items-center hover:text-indigo-600 transition">공모전·팀원모집</button>
-                <button id="nav-disc" onclick="showTab('disc')" class="px-4 h-full flex items-center hover:text-indigo-600 transition">DISC 40문항 진단</button>
-                <button id="nav-mypage" onclick="showTab('mypage')" class="px-4 h-full flex items-center hover:text-indigo-600 transition">마이페이지</button>
-                <button id="nav-chat" onclick="showTab('chat')" class="px-4 h-full flex items-center hover:text-indigo-600 transition font-bold text-indigo-600">💬 팀 단체 채팅방</button>
+                <button id="nav-home" onclick="showTab('home')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition tab-active">홈</button>
+                <button id="nav-projects" onclick="showTab('projects')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition">공모전·대외활동</button>
+                <button id="nav-univ" onclick="showTab('univ')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition font-bold text-emerald-700">🏫 학교 수업 팀플</button>
+                <button id="nav-disc" onclick="showTab('disc')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition">DISC 40문항</button>
+                <button id="nav-mypage" onclick="showTab('mypage')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition">마이페이지</button>
+                <button id="nav-chat" onclick="showTab('chat')" class="px-3.5 h-full flex items-center hover:text-indigo-600 transition font-bold text-indigo-600">💬 팀·사전 채팅방</button>
             </div>
 
             <div id="auth-buttons" class="flex items-center space-x-2">
@@ -46,13 +47,14 @@
             </div>
         </div>
 
-        <!-- 모바일 하단/보조 탭 바 -->
-        <div class="flex md:hidden border-t border-slate-100 bg-white justify-around text-xs font-semibold text-slate-600 py-2">
-            <button onclick="showTab('home')" class="px-2 py-1 hover:text-indigo-600">홈</button>
-            <button onclick="showTab('projects')" class="px-2 py-1 hover:text-indigo-600">모집게시판</button>
-            <button onclick="showTab('disc')" class="px-2 py-1 hover:text-indigo-600">DISC진단</button>
-            <button onclick="showTab('mypage')" class="px-2 py-1 hover:text-indigo-600">마이페이지</button>
-            <button onclick="showTab('chat')" class="px-2 py-1 text-indigo-600 font-bold">팀채팅</button>
+        <!-- 모바일 탭 바 -->
+        <div class="flex md:hidden border-t border-slate-100 bg-white justify-around text-[11px] font-bold text-slate-600 py-2">
+            <button onclick="showTab('home')" class="px-1.5 py-1">홈</button>
+            <button onclick="showTab('projects')" class="px-1.5 py-1">공모전</button>
+            <button onclick="showTab('univ')" class="px-1.5 py-1 text-emerald-700">🏫대학팀플</button>
+            <button onclick="showTab('disc')" class="px-1.5 py-1">DISC</button>
+            <button onclick="showTab('mypage')" class="px-1.5 py-1">마이페이지</button>
+            <button onclick="showTab('chat')" class="px-1.5 py-1 text-indigo-600">💬채팅</button>
         </div>
     </nav>
 
@@ -63,75 +65,82 @@
         <section id="tab-home" class="space-y-8">
             <div class="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 rounded-3xl p-8 md:p-12 text-white shadow-xl">
                 <div class="relative z-10 max-w-2xl space-y-4">
-                    <span class="inline-block bg-white/20 backdrop-blur-sm text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">Behavioral & Data Matching</span>
-                    <h1 class="text-3xl md:text-5xl font-black leading-tight">성향과 역할이 완벽히 맞물리는<br>최고의 팀을 만나보세요</h1>
+                    <span class="inline-block bg-white/20 backdrop-blur-sm text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">DISC & University Course Matching</span>
+                    <h1 class="text-3xl md:text-5xl font-black leading-tight">공모전부터 대학교 수업 팀플까지<br>성향과 역할로 완벽 매칭</h1>
                     <p class="text-indigo-100 text-sm md:text-base leading-relaxed">
-                        40문항 DISC 행동유형 분석, 희망 역할, 00:00~24:00 활동 가능 시간대까지 정밀하게 매칭합니다. 지원 수락 즉시 열리는 팀 전용 단체 채팅방에서 협업을 시작하세요.
+                        전국 대학교 수업별·학과별·인원별 팀원 모집과 40문항 DISC 성향 분석을 지원합니다. 지원자 프로필 열람과 수락 전 1:1 사전 채팅으로 실패 없는 팀을 구성하세요.
                     </p>
                     <div class="pt-3 flex flex-wrap gap-3">
-                        <button onclick="showTab('disc')" class="bg-white text-indigo-700 font-extrabold px-6 py-3.5 rounded-2xl shadow-lg hover:bg-indigo-50 transition text-sm">내 DISC 성향 진단하기 →</button>
-                        <button onclick="showTab('projects')" class="bg-indigo-500/40 border border-white/30 backdrop-blur-sm text-white font-bold px-6 py-3.5 rounded-2xl hover:bg-indigo-500/60 transition text-sm">공모전·팀원 모집 보기</button>
+                        <button onclick="showTab('univ')" class="bg-emerald-400 text-slate-950 font-extrabold px-6 py-3.5 rounded-2xl shadow-lg hover:bg-emerald-300 transition text-sm">🏫 전국 대학교 수업 팀플 찾기 →</button>
+                        <button onclick="showTab('projects')" class="bg-white text-indigo-700 font-extrabold px-6 py-3.5 rounded-2xl shadow-lg hover:bg-indigo-50 transition text-sm">🏆 공모전·대외활동 모집 보기</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 핵심 기능 요약 카드 -->
             <div class="grid md:grid-cols-4 gap-4">
+                <div onclick="showTab('univ')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-emerald-300 cursor-pointer transition">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black mb-3">UNIV</div>
+                    <div class="font-bold text-slate-900 mb-1">전국 대학 수업 팀플</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">울산대 등 대학교 선택 후 학과·강의명·교수/학생·목표 인원별로 팀원을 모집합니다.</p>
+                </div>
                 <div onclick="showTab('disc')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
-                    <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-black mb-3">D·I·S·C</div>
-                    <div class="font-bold text-slate-900 mb-1">40문항 정밀 진단</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">주도형(D), 사교형(I), 안정형(S), 신중형(C) 점수를 산출해 내 프로필에 즉시 연동합니다.</p>
-                </div>
-                <div onclick="showTab('mypage')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black mb-3">24H</div>
-                    <div class="font-bold text-slate-900 mb-1">활동 시간대 & 포트폴리오</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">00:00~24:00 활동 가능 시간, 희망 역할, 자격증, 수상 경력을 체계적으로 관리합니다.</p>
-                </div>
-                <div onclick="showTab('projects')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
-                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black mb-3">MATCH</div>
-                    <div class="font-bold text-slate-900 mb-1">포스터 업로드 & 지원 관리</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">공모전 포스터 사진을 첨부해 모집글을 올리고, 지원자를 한눈에 비교해 수락/거절합니다.</p>
+                    <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-black mb-3">DISC</div>
+                    <div class="font-bold text-slate-900 mb-1">프로필 & 성향 열람</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">지원자와 AI 추천 팀원의 DISC 그래프, 활동 가능 시간(00~24시), 스펙을 상세히 확인합니다.</p>
                 </div>
                 <div onclick="showTab('chat')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black mb-3">CHAT</div>
-                    <div class="font-bold text-slate-900 mb-1">단체톡 & 팀원 관리</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">수락된 팀원들과 실시간 단체 대화를 나누고, 팀장은 필요 시 팀원을 강퇴할 수 있습니다.</p>
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black mb-3">1:1</div>
+                    <div class="font-bold text-slate-900 mb-1">수락 전 사전 채팅</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">팀원으로 수락하기 전에도 지원자와 팀장이 1:1 사전 채팅으로 역할과 시간을 조율합니다.</p>
+                </div>
+                <div onclick="showTab('mypage')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black mb-3">TEAM</div>
+                    <div class="font-bold text-slate-900 mb-1">마이페이지 팀 통합관리</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">내가 등록한 모든 공모전과 수업 팀플의 지원자 수락/거절, 팀원 추가/강퇴를 관리합니다.</p>
                 </div>
             </div>
         </section>
 
-        <!-- 2. 공모전 / 팀원 모집 게시판 -->
+        <!-- 2. 공모전 / 대외활동 게시판 -->
         <section id="tab-projects" class="hidden space-y-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
                 <div>
-                    <h2 class="text-2xl font-extrabold text-slate-900">공모전 · 대외활동 · 과제 팀원 모집</h2>
-                    <p class="text-sm text-slate-500 mt-0.5">원하는 팀에 지원하거나 직접 포스터와 함께 모집글을 등록해보세요.</p>
+                    <h2 class="text-2xl font-extrabold text-slate-900">🏆 공모전 · 대외활동 팀원 모집</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">수락 전 사전 채팅과 AI 성향 매칭으로 최적의 공모전 파트너를 찾아보세요.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
                     <select id="filter-category" onchange="renderFilteredProjects()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 font-medium">
                         <option value="ALL">전체 카테고리</option>
                         <option value="공모전">공모전</option>
                         <option value="대외활동">대외활동</option>
-                        <option value="과제(팀플)">과제(팀플)</option>
+                        <option value="과제(팀플)">기타 프로젝트</option>
                     </select>
-                    <button onclick="toggleProjectForm()" class="bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition shadow-sm text-sm">+ 새 모집글 작성</button>
+                    <select id="filter-headcount" onchange="renderFilteredProjects()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 font-medium">
+                        <option value="ALL">전체 인원</option>
+                        <option value="2">2인 팀</option>
+                        <option value="3">3인 팀</option>
+                        <option value="4">4인 팀</option>
+                        <option value="5">5인 팀</option>
+                        <option value="6">6인 이상</option>
+                    </select>
+                    <button onclick="toggleProjectForm()" class="bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition shadow-sm text-sm">+ 새 공모전 모집글 등록</button>
                 </div>
             </div>
 
-            <!-- 새 모집글 작성 폼 -->
+            <!-- 공모전 등록 폼 -->
             <div id="project-form-box" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-lg border-2 border-indigo-100 space-y-5">
                 <div class="flex justify-between items-center border-b pb-3">
-                    <h3 class="font-extrabold text-lg text-slate-900">✨ 새 팀원 모집 공고 등록</h3>
+                    <h3 class="font-extrabold text-lg text-slate-900">✨ 새 공모전·대외활동 모집 공고 등록</h3>
                     <button onclick="toggleProjectForm()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
                 </div>
 
-                <div class="grid md:grid-cols-3 gap-4">
+                <div class="grid md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">카테고리</label>
                         <select id="proj-category" class="w-full border rounded-xl px-3 py-2.5 text-sm bg-slate-50">
                             <option value="공모전">공모전</option>
                             <option value="대외활동">대외활동</option>
-                            <option value="과제(팀플)">과제(팀플)</option>
+                            <option value="과제(팀플)">기타 프로젝트</option>
                         </select>
                     </div>
                     <div>
@@ -140,6 +149,16 @@
                             <option value="온·오프라인 혼합">온·오프라인 혼합</option>
                             <option value="온라인">온라인</option>
                             <option value="오프라인">오프라인</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">목표 총 팀원 수 (본인 포함)</label>
+                        <select id="proj-max-members" class="w-full border rounded-xl px-3 py-2.5 text-sm bg-slate-50 font-bold text-indigo-700">
+                            <option value="2">2명 (2인 팀)</option>
+                            <option value="3">3명 (3인 팀)</option>
+                            <option value="4" selected>4명 (4인 팀)</option>
+                            <option value="5">5명 (5인 팀)</option>
+                            <option value="6">6명 (6인 팀)</option>
                         </select>
                     </div>
                     <div>
@@ -184,12 +203,11 @@
                 <!-- 사진 파일 업로드 & URL 입력 -->
                 <div class="grid md:grid-cols-2 gap-4 bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100">
                     <div>
-                        <label class="block text-xs font-bold text-indigo-900 mb-1">📷 공모전 포스터/사진 파일 업로드 (PC·모바일)</label>
+                        <label class="block text-xs font-bold text-indigo-900 mb-1">📷 공모전 포스터/사진 파일 업로드</label>
                         <input id="proj-image-file" type="file" accept="image/*" onchange="handleImageFileSelect(event)" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
-                        <p class="text-[11px] text-slate-500 mt-1">파일을 선택하면 자동으로 최적화되어 첨부됩니다.</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-indigo-900 mb-1">🔗 또는 이미지 주소(URL) 직접 입력</label>
+                        <label class="block text-xs font-bold text-indigo-900 mb-1">🔗 또는 이미지 URL 직접 입력</label>
                         <input id="proj-image-url" type="url" placeholder="https://example.com/poster.jpg" class="w-full border rounded-xl px-3 py-2 text-sm bg-white">
                         <div id="proj-image-preview-wrap" class="hidden mt-2 flex items-center gap-3">
                             <img id="proj-image-preview" src="" class="h-14 w-20 object-cover rounded-lg border">
@@ -204,7 +222,7 @@
                 </div>
             </div>
 
-            <!-- 성향 맞춤 추천 팀원 결과 박스 -->
+            <!-- 성향 맞춤 추천 팀원 결과 박스 (프로필 보기 & 사전 채팅 지원) -->
             <div id="recommend-box" class="hidden bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 p-6 rounded-2xl space-y-4 shadow-sm">
                 <div class="flex justify-between items-center">
                     <div>
@@ -216,11 +234,213 @@
                 <div id="recommend-list" class="grid md:grid-cols-2 gap-4"></div>
             </div>
 
-            <!-- 게시글 리스트 -->
+            <!-- 공모전 리스트 -->
             <div id="project-list" class="grid md:grid-cols-2 gap-6"></div>
         </section>
 
-        <!-- 3. DISC 40문항 검사 -->
+        <!-- 3. 🏫 전국 대학교 수업 과제 팀플 전용 페이지 -->
+        <section id="tab-univ" class="hidden space-y-6">
+            <!-- STEP 1: 전국 대학교 선택 화면 -->
+            <div id="univ-selector-view" class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
+                <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b pb-5">
+                    <div>
+                        <span class="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">전국 대학교 캠퍼스 네트워크</span>
+                        <h2 class="text-2xl font-black text-slate-900 mt-2">🏫 학교 수업 과제 팀플 찾기</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">소속 대학교(예: 울산대학교)를 선택하면 학과 등록, 강의명 등록, 교수/학생 선택 및 인원별 팀원 모집을 이용할 수 있습니다.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="custom-univ-input" type="text" placeholder="목록에 없는 학교명 직접 입력" class="border rounded-xl px-3.5 py-2 text-sm">
+                        <button onclick="selectCustomUniv()" class="bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-slate-900 shrink-0">직접 이동</button>
+                    </div>
+                </div>
+
+                <!-- 학교 검색 및 지역 필터 -->
+                <div class="flex flex-col sm:flex-row gap-3 justify-between">
+                    <input id="univ-search-input" type="text" oninput="renderUniversityGrid()" placeholder="🔍 대학교 이름 검색 (예: 울산대학교, 부산대, 서울대...)" class="flex-1 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setUnivRegion('ALL')" id="reg-ALL" class="univ-reg-btn bg-emerald-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl">전체</button>
+                        <button onclick="setUnivRegion('울산·부산·경남')" id="reg-울산·부산·경남" class="univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl">울산·부산·경남</button>
+                        <button onclick="setUnivRegion('서울·수도권')" id="reg-서울·수도권" class="univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl">서울·수도권</button>
+                        <button onclick="setUnivRegion('대구·경북')" id="reg-대구·경북" class="univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl">대구·경북</button>
+                        <button onclick="setUnivRegion('대전·충청·강원')" id="reg-대전·충청·강원" class="univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl">대전·충청·강원</button>
+                        <button onclick="setUnivRegion('광주·전라·제주')" id="reg-광주·전라·제주" class="univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl">광주·전라·제주</button>
+                    </div>
+                </div>
+
+                <!-- 대학교 그리드 리스트 -->
+                <div id="univ-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[460px] overflow-y-auto p-1"></div>
+            </div>
+
+            <!-- STEP 2: 선택한 대학교(예: 울산대학교) 수업 팀플 보드 -->
+            <div id="univ-board-view" class="hidden space-y-6">
+                <!-- 대학 헤더 배너 -->
+                <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-6 md:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-white/20 text-xs font-extrabold px-3 py-1 rounded-full">대학교 수업 과제·팀플 전용</span>
+                            <button onclick="backToUnivList()" class="text-xs bg-black/20 hover:bg-black/30 px-3 py-1 rounded-full font-bold transition">🔄 다른 대학교 선택</button>
+                        </div>
+                        <h2 id="selected-univ-title" class="text-2xl md:text-3xl font-black mt-2">울산대학교 수업 팀플 게시판</h2>
+                        <p class="text-emerald-100 text-xs md:text-sm mt-1">학과, 수업(강의명), 담당 교수님, 학생/교수 여부를 등록하고 목표 인원별로 팀원을 모집하세요.</p>
+                    </div>
+                    <button onclick="toggleCourseForm()" class="bg-white text-emerald-800 font-extrabold px-6 py-3.5 rounded-2xl shadow hover:bg-emerald-50 transition text-sm shrink-0">+ 학과/수업 팀플 등록하기</button>
+                </div>
+
+                <!-- 수업 팀플 등록 폼 (학과 등록 + 수업 등록 + 교수/학생 선택란 + 강의명 + 초기 팀원 등록 + 인원별 모집) -->
+                <div id="course-form-box" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-xl border-2 border-emerald-200 space-y-5">
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <h3 class="font-extrabold text-lg text-slate-900">🏫 학과 · 수업(강의명) · 팀원 모집 등록</h3>
+                        <button onclick="toggleCourseForm()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+                    </div>
+
+                    <!-- 교수 / 학생 선택란 & 목표 인원 선택 -->
+                    <div class="grid md:grid-cols-3 gap-4 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100">
+                        <div>
+                            <label class="block text-xs font-extrabold text-emerald-950 mb-1.5">등록자 구분 (교수 / 학생 선택) *</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="course-author-role" value="학생" checked class="peer hidden">
+                                    <div class="text-center py-2 rounded-xl border bg-white text-xs font-extrabold text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">🎓 학생</div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="course-author-role" value="교수" class="peer hidden">
+                                    <div class="text-center py-2 rounded-xl border bg-white text-xs font-extrabold text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">👨‍🏫 교수</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-emerald-950 mb-1.5">목표 팀 인원 (인원별 팀 구하기) *</label>
+                            <select id="course-max-members" class="w-full border border-emerald-200 rounded-xl px-3 py-2 text-sm bg-white font-extrabold text-emerald-800">
+                                <option value="2">2인 팀 (총 2명)</option>
+                                <option value="3">3인 팀 (총 3명)</option>
+                                <option value="4" selected>4인 팀 (총 4명)</option>
+                                <option value="5">5인 팀 (총 5명)</option>
+                                <option value="6">6인 팀 (총 6명)</option>
+                                <option value="7">7인 팀 (총 7명)</option>
+                                <option value="8">8인 이상 팀 (총 8명)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-emerald-950 mb-1.5">진행 방식</label>
+                            <select id="course-meeting" class="w-full border border-emerald-200 rounded-xl px-3 py-2 text-sm bg-white font-semibold">
+                                <option value="오프라인(캠퍼스)">오프라인 (교내 모임)</option>
+                                <option value="온·오프라인 혼합">온·오프라인 혼합</option>
+                                <option value="온라인(비대면)">온라인 (Zoom/카톡)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 학과 등록 / 수업(강의명) 등록 / 교수명 입력 -->
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">학과 등록 (전공/학부) *</label>
+                            <input id="course-dept" type="text" list="dept-suggestions" placeholder="예: 경제학과 / 컴퓨터공학부" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                            <datalist id="dept-suggestions">
+                                <option value="경제학과">
+                                <option value="경영학부">
+                                <option value="컴퓨터공학부">
+                                <option value="IT융합전공">
+                                <option value="기계공학부">
+                                <option value="전기전자공학부">
+                                <option value="조선해양공학부">
+                                <option value="화학공학부">
+                                <option value="디자인학부">
+                                <option value="교양대학(공통교양)">
+                            </datalist>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">수업 등록 (강의명) *</label>
+                            <input id="course-name" type="text" placeholder="예: 데이터경제학 / 행동경제학 / 캡스톤디자인" class="w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">담당 교수님 성함 *</label>
+                            <input id="course-prof" type="text" placeholder="예: 김OO 교수님" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- 현재 함께하고 있는 팀원 사전 등록 기능 -->
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="text-xs font-extrabold text-slate-800">👥 초기 팀원 등록 (본인 외에 이미 확정된 팀원이 있다면 추가하세요)</div>
+                                <p class="text-[11px] text-slate-500">개설자 본인은 자동으로 팀장에 등록되며, 아래에 추가한 인원만큼 현재 팀원 수에 즉시 반영됩니다.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <input id="init-member-name" type="text" placeholder="팀원 이름 (예: 김철수)" class="border rounded-xl px-3 py-2 text-xs bg-white">
+                            <input id="init-member-role" type="text" placeholder="담당 역할 (예: 자료조사/PPT)" class="border rounded-xl px-3 py-2 text-xs bg-white">
+                            <button type="button" onclick="addInitialMemberRow()" class="bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-slate-900">+ 팀원 목록에 추가</button>
+                        </div>
+                        <div id="init-members-chips" class="flex flex-wrap gap-2 pt-1"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">팀플 모집 제목 *</label>
+                        <input id="course-title" type="text" placeholder="예: [데이터경제학] A+ 목표로 성실하게 발표·분석 같이 하실 분 구합니다!" class="w-full border rounded-xl px-3.5 py-2.5 text-sm font-medium">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">세부 내용 및 희망 시간대 *</label>
+                        <textarea id="course-desc" rows="3" placeholder="수업 시간표, 공강 시간, 구하는 역할(발표/PPT/코딩/보고서) 등을 적어주세요." class="w-full border rounded-xl px-3.5 py-2.5 text-sm"></textarea>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-2">필요 역할 (복수 선택)</label>
+                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-role" value="발표" checked><span>발표</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-role" value="발표자료(PPT)" checked><span>발표자료(PPT)</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-role" value="자료조사" checked><span>자료조사</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-role" value="보고서작성"><span>보고서작성</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-role" value="데이터분석/코딩"><span>데이터분석/코딩</span></label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-2">선호 DISC 성향</label>
+                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-disc" value="D" checked><span class="text-red-600">D(주도형)</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-disc" value="I" checked><span class="text-amber-600">I(사교형)</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-disc" value="S" checked><span class="text-emerald-600">S(안정형)</span></label>
+                                <label class="flex items-center space-x-1 bg-white px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="course-disc" value="C" checked><span class="text-blue-600">C(신중형)</span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <button onclick="toggleCourseForm()" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">취소</button>
+                        <button onclick="submitCourseProject()" class="px-6 py-2.5 text-sm bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 shadow">수업 팀플 등록하기</button>
+                    </div>
+                </div>
+
+                <!-- 학과별 / 강의명별 / 인원별 필터 바 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap gap-3 items-center justify-between">
+                    <div class="flex flex-wrap gap-2 flex-1">
+                        <input id="filter-univ-dept" type="text" oninput="renderUniversityCourses()" placeholder="학과명 필터 (예: 경제)" class="border rounded-xl px-3 py-2 text-xs bg-slate-50">
+                        <input id="filter-univ-course" type="text" oninput="renderUniversityCourses()" placeholder="강의명/교수명 검색 (예: 데이터경제학)" class="border rounded-xl px-3 py-2 text-xs bg-slate-50 flex-1 min-w-[160px]">
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <select id="filter-univ-role-type" onchange="renderUniversityCourses()" class="border rounded-xl px-3 py-2 text-xs font-bold bg-slate-50">
+                            <option value="ALL">교수·학생 전체</option>
+                            <option value="학생">🎓 학생 개설</option>
+                            <option value="교수">👨‍🏫 교수 개설</option>
+                        </select>
+                        <select id="filter-univ-headcount" onchange="renderUniversityCourses()" class="border rounded-xl px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-800 border-emerald-200">
+                            <option value="ALL">인원별 전체 보기</option>
+                            <option value="2">2인 팀</option>
+                            <option value="3">3인 팀</option>
+                            <option value="4">4인 팀</option>
+                            <option value="5">5인 팀</option>
+                            <option value="6">6인 이상 팀</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 수업 팀플 카드 리스트 -->
+                <div id="univ-course-list" class="grid md:grid-cols-2 gap-6"></div>
+            </div>
+        </section>
+
+        <!-- 4. DISC 40문항 검사 -->
         <section id="tab-disc" class="hidden space-y-6">
             <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80">
                 <div class="flex flex-col md:flex-row justify-between md:items-center border-b pb-5 mb-6 gap-3">
@@ -233,17 +453,12 @@
                         <span id="disc-progress" class="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl">0 / 40 완료</span>
                     </div>
                 </div>
-
-                <div id="disc-questions-container" class="space-y-3 max-h-[580px] overflow-y-auto pr-2">
-                    <p class="text-sm text-slate-500">문항을 불러오는 중입니다...</p>
-                </div>
-
+                <div id="disc-questions-container" class="space-y-3 max-h-[580px] overflow-y-auto pr-2"></div>
                 <div class="mt-6 pt-5 border-t flex justify-end">
                     <button onclick="submitDiscTest()" class="bg-indigo-600 text-white font-extrabold px-8 py-3.5 rounded-2xl hover:bg-indigo-700 transition shadow-md">진단 결과 제출 및 내 프로필에 반영하기</button>
                 </div>
             </div>
 
-            <!-- 검사 결과 카드 -->
             <div id="disc-result-card" class="hidden bg-white p-8 rounded-3xl shadow-lg border-2 border-indigo-500 space-y-6">
                 <div class="text-center space-y-2">
                     <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">진단 완료</span>
@@ -256,168 +471,190 @@
                     <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100"><div class="text-xs font-bold text-blue-600">C (신중형)</div><div id="res-score-C" class="text-2xl font-black text-blue-700 mt-1">0점</div></div>
                 </div>
                 <div class="text-center">
-                    <button onclick="showTab('mypage')" class="bg-slate-900 text-white text-sm font-bold px-6 py-3 rounded-xl hover:bg-slate-800">마이페이지에서 상세 그래프 확인하기 →</button>
+                    <button onclick="showTab('mypage')" class="bg-slate-900 text-white text-sm font-bold px-6 py-3 rounded-xl hover:bg-slate-800">마이페이지에서 확인하기 →</button>
                 </div>
             </div>
         </section>
 
-        <!-- 4. 마이페이지 -->
-        <section id="tab-mypage" class="hidden space-y-6">
+        <!-- 5. 마이페이지 (내 프로필 + 내가 등록한 공모전/팀플 관리 + 지원 현황) -->
+        <section id="tab-mypage" class="hidden space-y-8">
             <div id="mypage-login-warning" class="bg-amber-50 border border-amber-200 text-amber-900 p-8 rounded-3xl text-center space-y-3">
-                <p class="font-bold text-lg">마이페이지 조회 및 프로필 설정을 위해 먼저 로그인해 주세요.</p>
+                <p class="font-bold text-lg">마이페이지 조회 및 팀 관리를 위해 먼저 로그인해 주세요.</p>
                 <button onclick="openAuthModal('login')" class="bg-indigo-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700">로그인 / 회원가입하기</button>
             </div>
 
-            <div id="mypage-content" class="hidden grid md:grid-cols-3 gap-6">
-                <!-- 좌측: 내 프로필 요약 & DISC 그래프 & 내 지원 현황 -->
-                <div class="space-y-6">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-5">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 id="mp-name" class="text-xl font-black text-slate-900">-</h3>
-                                <p id="mp-email" class="text-xs text-slate-500 mt-0.5">-</p>
-                                <p id="mp-time-badge" class="text-xs font-bold text-indigo-600 mt-2">⏰ 활동 가능: 09:00 ~ 18:00</p>
+            <div id="mypage-content" class="hidden space-y-8">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- 좌측: 내 프로필 요약 & DISC 그래프 & 내 지원 현황 -->
+                    <div class="space-y-6">
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 id="mp-name" class="text-xl font-black text-slate-900">-</h3>
+                                    <p id="mp-email" class="text-xs text-slate-500 mt-0.5">-</p>
+                                    <p id="mp-time-badge" class="text-xs font-bold text-indigo-600 mt-2">⏰ 활동 가능: 09:00 ~ 18:00</p>
+                                </div>
+                                <span id="mp-disc-badge" class="bg-indigo-600 text-white font-extrabold px-3 py-1 rounded-xl text-xs">미진단</span>
                             </div>
-                            <span id="mp-disc-badge" class="bg-indigo-600 text-white font-extrabold px-3 py-1 rounded-xl text-xs">미진단</span>
+
+                            <div class="space-y-3 pt-2 border-t">
+                                <div class="text-xs font-bold text-slate-500 uppercase">DISC 성향 분석 그래프 (50점 만점)</div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1"><span class="text-red-600">D (주도형)</span><span id="mp-text-D">0점</span></div>
+                                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-D" class="bg-red-500 h-full bar-transition" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1"><span class="text-amber-600">I (사교형)</span><span id="mp-text-I">0점</span></div>
+                                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-I" class="bg-amber-500 h-full bar-transition" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1"><span class="text-emerald-600">S (안정형)</span><span id="mp-text-S">0점</span></div>
+                                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-S" class="bg-emerald-500 h-full bar-transition" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1"><span class="text-blue-600">C (신중형)</span><span id="mp-text-C">0점</span></div>
+                                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-C" class="bg-blue-500 h-full bar-transition" style="width:0%"></div></div>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 border-t">
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <span class="text-sm font-bold text-slate-700">팀원 추천 목록에 내 프로필 노출</span>
+                                    <input id="edit-seeking" type="checkbox" class="w-5 h-5 accent-indigo-600" checked>
+                                </label>
+                            </div>
                         </div>
 
-                        <div class="space-y-3 pt-2 border-t">
-                            <div class="text-xs font-bold text-slate-500 uppercase">DISC 성향 분석 그래프 (50점 만점)</div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1"><span class="text-red-600">D (주도형)</span><span id="mp-text-D">0점</span></div>
-                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-D" class="bg-red-500 h-full bar-transition" style="width:0%"></div></div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1"><span class="text-amber-600">I (사교형)</span><span id="mp-text-I">0점</span></div>
-                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-I" class="bg-amber-500 h-full bar-transition" style="width:0%"></div></div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1"><span class="text-emerald-600">S (안정형)</span><span id="mp-text-S">0점</span></div>
-                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-S" class="bg-emerald-500 h-full bar-transition" style="width:0%"></div></div>
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1"><span class="text-blue-600">C (신중형)</span><span id="mp-text-C">0점</span></div>
-                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div id="mp-bar-C" class="bg-blue-500 h-full bar-transition" style="width:0%"></div></div>
-                            </div>
-                        </div>
-
-                        <div class="pt-3 border-t">
-                            <label class="flex items-center justify-between cursor-pointer">
-                                <span class="text-sm font-bold text-slate-700">팀원 추천 목록에 내 프로필 노출</span>
-                                <input id="edit-seeking" type="checkbox" class="w-5 h-5 accent-indigo-600" checked>
-                            </label>
+                        <!-- 내가 지원한 공모전·수업 현황 -->
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
+                            <h4 class="font-extrabold text-sm text-slate-900">📌 내가 지원한 공모전·팀플 현황</h4>
+                            <div id="my-applied-list" class="space-y-2 text-xs text-slate-500">지원한 내역이 없습니다.</div>
                         </div>
                     </div>
 
-                    <!-- 내가 지원한 공모전 현황 -->
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
-                        <h4 class="font-extrabold text-sm text-slate-900">📌 내가 지원한 공모전 현황</h4>
-                        <div id="my-applied-list" class="space-y-2 text-xs text-slate-500">
-                            지원한 내역이 없습니다.
+                    <!-- 우측: 상세 프로필 및 활동 가능 시간(00:00~24:00) 편집 -->
+                    <div class="md:col-span-2 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-5">
+                        <h3 class="text-lg font-extrabold text-slate-900 border-b pb-3">개인 프로필 및 협업 조건 설정</h3>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">이름</label>
+                                <input id="edit-name" type="text" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">나이</label>
+                                <input id="edit-age" type="number" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">전공 (학과)</label>
+                                <input id="edit-major" type="text" placeholder="예: 데이터경제학 / 컴퓨터공학" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">학력 (학교/학년)</label>
+                                <input id="edit-edu" type="text" placeholder="예: 울산대학교 3학년" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                            </div>
+                        </div>
+
+                        <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 space-y-2">
+                            <div class="text-xs font-extrabold text-indigo-950">⏰ 활동 및 회의 가능한 시간대 설정 (00:00 ~ 24:00)</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-indigo-700 mb-1">시작 시간</label>
+                                    <select id="edit-time-start" class="w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white font-semibold"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-indigo-700 mb-1">종료 시간</label>
+                                    <select id="edit-time-end" class="w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white font-semibold"></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">희망 역할 (복수 선택)</label>
+                                <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="팀장"><span>팀장</span></label>
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="발표"><span>발표</span></label>
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="발표자료(PPT)"><span>발표자료(PPT)</span></label>
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="자료조사"><span>자료조사</span></label>
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="개발/분석"><span>개발/분석</span></label>
+                                    <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="디자인"><span>디자인</span></label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">발표 가능 여부</label>
+                                <select id="edit-present" class="w-full border rounded-xl px-3 py-2 text-sm">
+                                    <option value="true">🎤 발표 가능</option>
+                                    <option value="false">📄 자료 조사 및 제작 선호</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">보유 자격증 및 기술 스택</label>
+                            <input id="edit-cert" type="text" placeholder="예: SQLD, ADsP, 컴활 1급, Python, Flutter" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">수상 경력 및 프로젝트 경험</label>
+                            <textarea id="edit-awards" rows="2" placeholder="예: 데이터 분석 경진대회 우수상" class="w-full border rounded-xl px-3.5 py-2 text-sm"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">포트폴리오 링크 (GitHub, Notion 등)</label>
+                            <input id="edit-portfolio" type="url" placeholder="https://github.com/..." class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                        </div>
+
+                        <div class="pt-2 flex justify-end">
+                            <button onclick="saveProfile()" class="bg-indigo-600 text-white font-extrabold px-7 py-3 rounded-2xl hover:bg-indigo-700 transition shadow">프로필 저장하기</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 우측: 상세 프로필 및 활동 가능 시간(00:00~24:00) 편집 -->
-                <div class="md:col-span-2 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-5">
-                    <h3 class="text-lg font-extrabold text-slate-900 border-b pb-3">개인 프로필 및 협업 조건 설정</h3>
-
-                    <div class="grid md:grid-cols-2 gap-4">
+                <!-- 내가 등록한 공모전 및 수업 팀플 통합 관리 섹션 -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-5">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b pb-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">이름</label>
-                            <input id="edit-name" type="text" class="w-full border rounded-xl px-3.5 py-2 text-sm">
+                            <span class="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">My Project & Team Dashboard</span>
+                            <h3 class="text-xl font-black text-slate-900 mt-1">🛠️ 내가 등록한 공모전 · 수업 팀플 현황 및 팀 관리</h3>
+                            <p class="text-xs text-slate-500">내가 개설한 모집글의 지원자 프로필 확인, 수락/거절, 팀원 추가/강퇴, 단체 채팅방을 한곳에서 관리하세요.</p>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">나이</label>
-                            <input id="edit-age" type="number" class="w-full border rounded-xl px-3.5 py-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">전공</label>
-                            <input id="edit-major" type="text" placeholder="예: 데이터경제학 / 컴퓨터공학" class="w-full border rounded-xl px-3.5 py-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">학력 (학교/학년)</label>
-                            <input id="edit-edu" type="text" placeholder="예: 대학교 3학년 재학" class="w-full border rounded-xl px-3.5 py-2 text-sm">
-                        </div>
+                        <button onclick="loadMyCreatedProjects()" class="text-xs font-bold bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl hover:bg-slate-200 self-start">🔄 현황 새로고침</button>
                     </div>
-
-                    <!-- 00:00 ~ 24:00 활동 가능 시간 선택 -->
-                    <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 space-y-2">
-                        <div class="text-xs font-extrabold text-indigo-950">⏰ 주로 활동 및 회의 가능한 시간대 설정 (00:00 ~ 24:00)</div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[11px] font-bold text-indigo-700 mb-1">시작 시간</label>
-                                <select id="edit-time-start" class="w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white font-semibold"></select>
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-indigo-700 mb-1">종료 시간</label>
-                                <select id="edit-time-end" class="w-full border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white font-semibold"></select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-2">희망 역할 (복수 선택)</label>
-                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="팀장"><span>팀장</span></label>
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="발표"><span>발표</span></label>
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="발표자료(PPT)"><span>발표자료(PPT)</span></label>
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="자료조사"><span>자료조사</span></label>
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="개발/분석"><span>개발/분석</span></label>
-                                <label class="flex items-center space-x-1 bg-slate-50 px-2.5 py-1.5 rounded-lg border"><input type="checkbox" name="edit-role" value="디자인"><span>디자인</span></label>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">발표 가능 여부</label>
-                            <select id="edit-present" class="w-full border rounded-xl px-3 py-2 text-sm">
-                                <option value="true">🎤 발표 가능</option>
-                                <option value="false">📄 자료 조사 및 제작 선호</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">보유 자격증 및 기술 스택</label>
-                        <input id="edit-cert" type="text" placeholder="예: SQLD, ADsP, 컴활 1급, Python, Flutter" class="w-full border rounded-xl px-3.5 py-2 text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">수상 경력 및 프로젝트 경험</label>
-                        <textarea id="edit-awards" rows="2" placeholder="예: 데이터 분석 경진대회 우수상" class="w-full border rounded-xl px-3.5 py-2 text-sm"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">포트폴리오 링크 (GitHub, Notion 등)</label>
-                        <input id="edit-portfolio" type="url" placeholder="https://github.com/..." class="w-full border rounded-xl px-3.5 py-2 text-sm">
-                    </div>
-
-                    <div class="pt-2 flex justify-end">
-                        <button onclick="saveProfile()" class="bg-indigo-600 text-white font-extrabold px-7 py-3 rounded-2xl hover:bg-indigo-700 transition shadow">프로필 저장하기</button>
-                    </div>
+                    <div id="my-created-projects-list" class="grid md:grid-cols-2 gap-5"></div>
                 </div>
             </div>
         </section>
 
-        <!-- 5. 팀 단체 채팅방 탭 -->
+        <!-- 6. 팀 단체 채팅방 & 수락 전 사전 채팅 탭 -->
         <section id="tab-chat" class="hidden">
             <div class="grid md:grid-cols-3 gap-6">
-                <!-- 좌측: 내가 속한 팀 목록 & 팀원 정보/강퇴 -->
+                <!-- 좌측: 팀 단체 채팅방 목록 & 수락 전 1:1 사전 채팅 목록 & 팀원 관리 -->
                 <div class="space-y-4">
                     <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-base font-extrabold text-slate-900">📂 내 팀 채팅방 목록</h3>
-                            <button onclick="loadMyTeams()" class="text-xs text-indigo-600 font-bold hover:underline">새로고침</button>
+                            <h3 class="text-sm font-extrabold text-slate-900">📂 팀 단체 채팅방 (수락 완료)</h3>
+                            <button onclick="loadMyTeams(); loadMyPreChats();" class="text-xs text-indigo-600 font-bold hover:underline">새로고침</button>
                         </div>
-                        <div id="my-teams-list" class="space-y-2 max-h-64 overflow-y-auto">
-                            <p class="text-xs text-slate-400 py-4 text-center">참여 중인 팀이 없습니다.</p>
+                        <div id="my-teams-list" class="space-y-2 max-h-48 overflow-y-auto">
+                            <p class="text-xs text-slate-400 py-3 text-center">참여 중인 팀이 없습니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-amber-200/80 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-sm font-extrabold text-amber-900">💬 수락 전 1:1 사전 문의 채팅</h3>
+                            <span class="text-[11px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">지원자↔팀장</span>
+                        </div>
+                        <div id="my-prechats-list" class="space-y-2 max-h-48 overflow-y-auto">
+                            <p class="text-xs text-slate-400 py-3 text-center">진행 중인 사전 채팅이 없습니다.</p>
                         </div>
                     </div>
 
                     <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
                         <div class="flex justify-between items-center">
                             <h4 class="text-sm font-extrabold text-slate-900">👥 현재 채팅방 팀원 관리</h4>
-                            <span class="text-[11px] text-slate-400">팀장 강퇴 가능</span>
+                            <span class="text-[11px] text-slate-400">프로필·강퇴</span>
                         </div>
                         <div id="chat-member-list" class="space-y-2 text-xs text-slate-500">
                             채팅방을 선택하면 팀원 목록이 표시됩니다.
@@ -426,21 +663,21 @@
                 </div>
 
                 <!-- 우측: 실시간 단체 채팅창 -->
-                <div class="md:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200/80 flex flex-col h-[560px] overflow-hidden">
+                <div class="md:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200/80 flex flex-col h-[600px] overflow-hidden">
                     <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
                         <div>
-                            <h3 id="current-chat-title" class="font-extrabold text-base">왼쪽에서 팀 채팅방을 선택해 주세요</h3>
-                            <p id="chat-members-count" class="text-[11px] text-slate-300 mt-0.5">수락된 모든 팀원과 실시간으로 대화할 수 있습니다.</p>
+                            <h3 id="current-chat-title" class="font-extrabold text-base">왼쪽에서 채팅방을 선택해 주세요</h3>
+                            <p id="chat-members-count" class="text-[11px] text-slate-300 mt-0.5">팀 단체 채팅 또는 수락 전 사전 채팅을 이용할 수 있습니다.</p>
                         </div>
-                        <span id="chat-status-dot" class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-1 rounded-full font-bold">실시간 동기화</span>
+                        <span class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-1 rounded-full font-bold">실시간 동기화</span>
                     </div>
 
                     <div id="chat-box" class="flex-1 overflow-y-auto bg-slate-100/70 p-5 space-y-3">
-                        <div class="text-slate-400 text-center text-xs py-16">팀 채팅방을 선택하면 이전 대화 내역과 실시간 메시지가 표시됩니다.</div>
+                        <div class="text-slate-400 text-center text-xs py-16">왼쪽 목록에서 팀 채팅방 또는 사전 문의 채팅을 선택하세요.</div>
                     </div>
 
                     <div class="p-4 bg-white border-t flex gap-2">
-                        <input type="text" id="chat-input" placeholder="팀원들에게 보낼 메시지를 입력하세요..." class="flex-1 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50" disabled>
+                        <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." class="flex-1 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50" disabled>
                         <button onclick="sendChatMessage()" id="chat-send-btn" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-sm font-extrabold hover:bg-indigo-700 transition disabled:opacity-40" disabled>전송</button>
                     </div>
                 </div>
@@ -449,7 +686,7 @@
 
     </main>
 
-    <!-- 로그인 / 회원가입 모달 -->
+    <!-- 모달 1: 로그인 / 회원가입 -->
     <div id="auth-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-3xl max-w-md w-full p-7 space-y-5 shadow-2xl">
             <div class="flex justify-between items-center">
@@ -468,7 +705,7 @@
                 <div id="signup-extra-fields" class="hidden space-y-3 pt-1">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">이름 (실명 또는 닉네임)</label>
-                        <input id="auth-name" type="text" placeholder="홍길동" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
+                        <input id="auth-name" type="text" placeholder="오준석" class="w-full border rounded-xl px-3.5 py-2.5 text-sm">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -490,31 +727,96 @@
         </div>
     </div>
 
-    <!-- 지원자 관리 모달 (작성자 전용) -->
+    <!-- 모달 2: 지원자 관리 (프로필 보기 + 수락 전 사전채팅 + 수락/거절) -->
     <div id="applicants-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b pb-3">
                 <div>
-                    <h3 class="font-extrabold text-lg text-slate-900">📋 공모전 지원자 관리 (수락 / 거절)</h3>
-                    <p class="text-xs text-slate-500">수락 즉시 해당 지원자가 팀 단체 채팅방에 초대됩니다.</p>
+                    <h3 class="font-extrabold text-lg text-slate-900">📋 지원자 관리 (프로필 확인 · 사전채팅 · 수락/거절)</h3>
+                    <p class="text-xs text-slate-500">지원자의 상세 프로필을 열람하거나 수락 전 1:1 사전 채팅으로 먼저 대화해 보세요.</p>
                 </div>
                 <button onclick="closeApplicantsModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
             </div>
-            <div id="applicants-list" class="space-y-3 max-h-80 overflow-y-auto"></div>
+            <div id="applicants-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
         </div>
     </div>
 
-    <!-- 현재 팀원 관리 및 강퇴 모달 (게시판용) -->
+    <!-- 모달 3: 팀원 관리 (팀원 수동 추가 + 프로필 보기 + 강퇴) -->
     <div id="members-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b pb-3">
                 <div>
-                    <h3 class="font-extrabold text-lg text-slate-900">👥 현재 팀원 관리 및 강퇴</h3>
-                    <p class="text-xs text-slate-500">강퇴된 팀원은 팀 목록 및 단체 채팅방에서 즉시 제외됩니다.</p>
+                    <h3 class="font-extrabold text-lg text-slate-900">👥 팀원 등록 및 강퇴 관리</h3>
+                    <p class="text-xs text-slate-500">오프라인에서 구한 팀원을 직접 추가하거나 기존 팀원을 강퇴할 수 있습니다.</p>
                 </div>
                 <button onclick="closeMembersModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
             </div>
+
+            <!-- 팀원 직접 추가 영역 -->
+            <div id="manual-add-member-box" class="bg-slate-50 p-3.5 rounded-2xl border flex flex-wrap gap-2 items-center">
+                <input id="modal-add-member-name" type="text" placeholder="추가할 팀원 이름" class="border rounded-xl px-3 py-2 text-xs bg-white flex-1">
+                <input id="modal-add-member-role" type="text" placeholder="역할 (예: 발표/자료조사)" class="border rounded-xl px-3 py-2 text-xs bg-white flex-1">
+                <button onclick="addManualMemberFromModal()" class="bg-indigo-600 text-white text-xs font-extrabold px-4 py-2 rounded-xl hover:bg-indigo-700">+ 팀원 등록</button>
+            </div>
+
             <div id="modal-members-list" class="space-y-2.5 max-h-80 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- 모달 4: 👤 상세 프로필 보기 모달 (지원자 / 추천 팀원 / 개설자 프로필 열람) -->
+    <div id="profile-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 md:p-7 space-y-5 shadow-2xl">
+            <div class="flex justify-between items-start border-b pb-4">
+                <div>
+                    <span id="prof-disc-badge" class="bg-indigo-600 text-white text-xs font-extrabold px-3 py-1 rounded-full">DISC 유형</span>
+                    <h3 id="prof-name" class="text-2xl font-black text-slate-900 mt-2">-</h3>
+                    <p id="prof-sub" class="text-xs text-slate-500">-</p>
+                </div>
+                <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <!-- DISC 4대 점수 바 -->
+            <div class="bg-slate-50 p-4 rounded-2xl border space-y-2.5">
+                <div class="text-xs font-extrabold text-slate-600">📊 DISC 행동유형 진단 점수</div>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-white p-2.5 rounded-xl border"><div class="text-[11px] font-bold text-red-600">D 주도형</div><div id="prof-score-D" class="font-black text-sm mt-0.5">0점</div></div>
+                    <div class="bg-white p-2.5 rounded-xl border"><div class="text-[11px] font-bold text-amber-600">I 사교형</div><div id="prof-score-I" class="font-black text-sm mt-0.5">0점</div></div>
+                    <div class="bg-white p-2.5 rounded-xl border"><div class="text-[11px] font-bold text-emerald-600">S 안정형</div><div id="prof-score-S" class="font-black text-sm mt-0.5">0점</div></div>
+                    <div class="bg-white p-2.5 rounded-xl border"><div class="text-[11px] font-bold text-blue-600">C 신중형</div><div id="prof-score-C" class="font-black text-sm mt-0.5">0점</div></div>
+                </div>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+                <div class="flex justify-between py-2 border-b"><span class="font-bold text-slate-500">⏰ 활동 가능 시간대</span><span id="prof-time" class="font-extrabold text-indigo-700">-</span></div>
+                <div class="flex justify-between py-2 border-b"><span class="font-bold text-slate-500">🎯 희망 역할</span><span id="prof-roles" class="font-bold text-slate-800">-</span></div>
+                <div class="flex justify-between py-2 border-b"><span class="font-bold text-slate-500">🎤 발표 가능 여부</span><span id="prof-present" class="font-bold text-slate-800">-</span></div>
+                <div class="flex justify-between py-2 border-b"><span class="font-bold text-slate-500">📜 자격증 및 기술스택</span><span id="prof-cert" class="font-semibold text-slate-800">-</span></div>
+                <div class="py-2 border-b"><div class="font-bold text-slate-500 mb-1">🏆 수상 경력 및 주요 활동</div><div id="prof-awards" class="text-slate-700 bg-slate-50 p-2.5 rounded-xl">-</div></div>
+                <div class="flex justify-between py-2 items-center"><span class="font-bold text-slate-500">🔗 포트폴리오</span><a id="prof-portfolio" href="#" target="_blank" class="text-indigo-600 font-bold hover:underline">-</a></div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="prof-prechat-btn" class="hidden bg-amber-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl hover:bg-amber-600">💬 이 팀원과 사전 채팅하기</button>
+                <button onclick="closeProfileModal()" class="bg-slate-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 5: 💬 수락 전 1:1 사전 채팅 모달 (즉시 대화창) -->
+    <div id="prechat-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
+            <div class="px-6 py-4 bg-amber-500 text-white flex justify-between items-center">
+                <div>
+                    <span class="text-[10px] font-black uppercase bg-black/20 px-2 py-0.5 rounded">수락 전 1:1 사전 채팅</span>
+                    <h3 id="prechat-modal-title" class="font-extrabold text-sm mt-1">팀장 ↔ 지원자 사전 문의</h3>
+                </div>
+                <button onclick="closePreChatModal()" class="text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div id="prechat-modal-box" class="flex-1 overflow-y-auto bg-amber-50/40 p-4 space-y-2.5 text-xs"></div>
+            <div class="p-3.5 bg-white border-t flex gap-2">
+                <input id="prechat-modal-input" type="text" placeholder="수락 전 궁금한 점이나 역할/시간을 조율해보세요..." class="flex-1 border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <button onclick="sendPreChatFromModal()" class="bg-amber-500 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs hover:bg-amber-600">전송</button>
+            </div>
         </div>
     </div>
 
@@ -525,19 +827,91 @@
         let discQuestions = [];
         let allProjects = [];
         let myTeamsCache = [];
+        let myPreChatsCache = [];
         let uploadedImageDataUrl = "";
 
+        // 전국 대학교 데이터 (울산대학교 최상단 배치 + 전국 주요 대학)
+        const UNIVERSITIES = [
+            { name: "울산대학교", region: "울산·부산·경남", badge: "🔥 인기 캠퍼스" },
+            { name: "UNIST (울산과학기술원)", region: "울산·부산·경남", badge: "울산" },
+            { name: "울산과학대학교", region: "울산·부산·경남", badge: "울산" },
+            { name: "부산대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "부경대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "동아대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "경성대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "동의대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "한국해양대학교", region: "울산·부산·경남", badge: "부산" },
+            { name: "경상국립대학교", region: "울산·부산·경남", badge: "경남" },
+            { name: "창원대학교", region: "울산·부산·경남", badge: "경남" },
+            { name: "인제대학교", region: "울산·부산·경남", badge: "경남" },
+            { name: "경남대학교", region: "울산·부산·경남", badge: "경남" },
+            { name: "서울대학교", region: "서울·수도권", badge: "서울" },
+            { name: "연세대학교", region: "서울·수도권", badge: "서울" },
+            { name: "고려대학교", region: "서울·수도권", badge: "서울" },
+            { name: "성균관대학교", region: "서울·수도권", badge: "서울·수원" },
+            { name: "한양대학교", region: "서울·수도권", badge: "서울·안산" },
+            { name: "서강대학교", region: "서울·수도권", badge: "서울" },
+            { name: "중앙대학교", region: "서울·수도권", badge: "서울" },
+            { name: "경희대학교", region: "서울·수도권", badge: "서울·용인" },
+            { name: "한국외국어대학교", region: "서울·수도권", badge: "서울·용인" },
+            { name: "서울시립대학교", region: "서울·수도권", badge: "서울" },
+            { name: "건국대학교", region: "서울·수도권", badge: "서울" },
+            { name: "동국대학교", region: "서울·수도권", badge: "서울" },
+            { name: "홍익대학교", region: "서울·수도권", badge: "서울" },
+            { name: "국민대학교", region: "서울·수도권", badge: "서울" },
+            { name: "숭실대학교", region: "서울·수도권", badge: "서울" },
+            { name: "세종대학교", region: "서울·수도권", badge: "서울" },
+            { name: "단국대학교", region: "서울·수도권", badge: "용인·천안" },
+            { name: "인하대학교", region: "서울·수도권", badge: "인천" },
+            { name: "인천대학교", region: "서울·수도권", badge: "인천" },
+            { name: "아주대학교", region: "서울·수도권", badge: "수원" },
+            { name: "가천대학교", region: "서울·수도권", badge: "성남" },
+            { name: "경기대학교", region: "서울·수도권", badge: "수원·서울" },
+            { name: "경북대학교", region: "대구·경북", badge: "대구" },
+            { name: "영남대학교", region: "대구·경북", badge: "경산" },
+            { name: "계명대학교", region: "대구·경북", badge: "대구" },
+            { name: "대구대학교", region: "대구·경북", badge: "경산" },
+            { name: "POSTECH (포항공과대학교)", region: "대구·경북", badge: "포항" },
+            { name: "금오공과대학교", region: "대구·경북", badge: "구미" },
+            { name: "안동대학교", region: "대구·경북", badge: "안동" },
+            { name: "충남대학교", region: "대전·충청·강원", badge: "대전" },
+            { name: "KAIST (한국과학기술원)", region: "대전·충청·강원", badge: "대전" },
+            { name: "한밭대학교", region: "대전·충청·강원", badge: "대전" },
+            { name: "충북대학교", region: "대전·충청·강원", badge: "청주" },
+            { name: "한국교원대학교", region: "대전·충청·강원", badge: "청주" },
+            { name: "공주대학교", region: "대전·충청·강원", badge: "공주" },
+            { name: "순천향대학교", region: "대전·충청·강원", badge: "아산" },
+            { name: "강원대학교", region: "대전·충청·강원", badge: "춘천·삼척" },
+            { name: "한림대학교", region: "대전·충청·강원", badge: "춘천" },
+            { name: "전남대학교", region: "광주·전라·제주", badge: "광주" },
+            { name: "조선대학교", region: "광주·전라·제주", badge: "광주" },
+            { name: "전북대학교", region: "광주·전라·제주", badge: "전주" },
+            { name: "원광대학교", region: "광주·전라·제주", badge: "익산" },
+            { name: "순천대학교", region: "광주·전라·제주", badge: "순천" },
+            { name: "목포대학교", region: "광주·전라·제주", badge: "목포" },
+            { name: "제주대학교", region: "광주·전라·제주", badge: "제주" }
+        ];
+
+        let selectedUnivRegion = "ALL";
+        let currentUniversity = "";
+        let initialCourseMembers = [];
+        let managingProjectId = null;
+
+        // 채팅 상태 ('team' 단체톡 or 'pre' 수락전 사전채팅)
+        let activeChatMode = "team";
         let activeProjectId = null;
+        let activePreChatInquirerEmail = null;
         let lastMessageId = 0;
         let chatPollTimer = null;
 
+        // 모달 사전채팅 상태
+        let modalPreChatProjectId = null;
+        let modalPreChatInquirerEmail = null;
+        let modalPreChatTimer = null;
+
         function escapeHtml(str) {
             if (!str) return "";
-            return String(str)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;");
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
 
         function clearSession() {
@@ -546,20 +920,14 @@
             localStorage.removeItem("user_email");
             activeProjectId = null;
             lastMessageId = 0;
-            myTeamsCache = [];
-            if (chatPollTimer) {
-                clearInterval(chatPollTimer);
-                chatPollTimer = null;
-            }
+            if (chatPollTimer) clearInterval(chatPollTimer);
             updateAuthUI();
         }
 
         async function apiFetch(url, options = {}) {
             const token = localStorage.getItem("access_token");
             const headers = { ...(options.headers || {}) };
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`;
-            }
+            if (token) headers["Authorization"] = `Bearer ${token}`;
             const res = await fetch(url, { ...options, headers });
             if (res.status === 401) {
                 clearSession();
@@ -571,12 +939,16 @@
         window.onload = async () => {
             populateTimeDropdowns();
             updateAuthUI();
+            renderUniversityGrid();
             await verifySessionSilently();
             loadDiscQuestions();
             loadProjects();
 
             document.getElementById("chat-input")?.addEventListener("keypress", (e) => {
                 if (e.key === "Enter") sendChatMessage();
+            });
+            document.getElementById("prechat-modal-input")?.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") sendPreChatFromModal();
             });
             document.getElementById("auth-password")?.addEventListener("keypress", (e) => {
                 if (e.key === "Enter") submitAuth();
@@ -587,12 +959,9 @@
             const token = localStorage.getItem("access_token");
             if (!token) return;
             try {
-                const res = await fetch(`${API_BASE}/api/users/me`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (!res.ok) {
-                    clearSession();
-                } else {
+                const res = await fetch(`${API_BASE}/api/users/me`, { headers: { "Authorization": `Bearer ${token}` } });
+                if (!res.ok) clearSession();
+                else {
                     const user = await res.json();
                     localStorage.setItem("user_name", user.name);
                     localStorage.setItem("user_email", user.email);
@@ -608,8 +977,7 @@
             let options = "";
             for (let i = 0; i <= 24; i++) {
                 const hour = i < 10 ? "0" + i : "" + i;
-                const timeStr = hour + ":00";
-                options += `<option value="${timeStr}">${timeStr}</option>`;
+                options += `<option value="${hour}:00">${hour}:00</option>`;
             }
             startSelect.innerHTML = options;
             endSelect.innerHTML = options;
@@ -618,7 +986,7 @@
         }
 
         window.showTab = function(tabName) {
-            ["home", "projects", "disc", "mypage", "chat"].forEach(t => {
+            ["home", "projects", "univ", "disc", "mypage", "chat"].forEach(t => {
                 document.getElementById(`tab-${t}`)?.classList.add("hidden");
                 document.getElementById(`nav-${t}`)?.classList.remove("tab-active");
             });
@@ -628,11 +996,426 @@
             if (tabName === "mypage") {
                 loadMyProfile();
                 loadMyApplications();
+                loadMyCreatedProjects();
             }
             if (tabName === "projects") loadProjects();
-            if (tabName === "chat") loadMyTeams();
+            if (tabName === "univ") {
+                loadProjects();
+                renderUniversityGrid();
+            }
+            if (tabName === "chat") {
+                loadMyTeams();
+                loadMyPreChats();
+            }
         };
 
+        // ----------------------------------------------------
+        // 🏫 전국 대학교 리스트 & 대학별 수업 팀플 보드 로직
+        // ----------------------------------------------------
+        window.setUnivRegion = function(region) {
+            selectedUnivRegion = region;
+            document.querySelectorAll(".univ-reg-btn").forEach(btn => {
+                btn.className = "univ-reg-btn bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2 rounded-xl";
+            });
+            const activeBtn = document.getElementById(`reg-${region}`);
+            if (activeBtn) activeBtn.className = "univ-reg-btn bg-emerald-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl";
+            renderUniversityGrid();
+        };
+
+        window.renderUniversityGrid = function() {
+            const keyword = (document.getElementById("univ-search-input")?.value || "").trim().toLowerCase();
+            const grid = document.getElementById("univ-grid");
+            if (!grid) return;
+
+            const filtered = UNIVERSITIES.filter(u => {
+                const matchReg = selectedUnivRegion === "ALL" || u.region === selectedUnivRegion;
+                const matchKw = !keyword || u.name.toLowerCase().includes(keyword) || u.region.toLowerCase().includes(keyword);
+                return matchReg && matchKw;
+            });
+
+            const courseCounts = {};
+            allProjects.filter(p => p.project_type === "course").forEach(p => {
+                courseCounts[p.university] = (courseCounts[p.university] || 0) + 1;
+            });
+
+            grid.innerHTML = filtered.map(u => {
+                const cnt = courseCounts[u.name] || 0;
+                const isUlsan = u.name.includes("울산대");
+                return `
+                    <div onclick="selectUniversity('${escapeHtml(u.name)}')" class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between ${isUlsan ? 'bg-emerald-50/80 border-emerald-400 shadow-xs hover:shadow-md' : 'bg-slate-50/70 hover:bg-emerald-50/40 border-slate-200 hover:border-emerald-300'}">
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isUlsan ? 'bg-emerald-600 text-white' : 'bg-white border text-slate-500'}">${escapeHtml(u.badge)}</span>
+                                ${cnt > 0 ? `<span class="text-[11px] font-extrabold text-emerald-700">${cnt}개 팀플</span>` : ''}
+                            </div>
+                            <div class="font-extrabold text-sm text-slate-900">${escapeHtml(u.name)}</div>
+                        </div>
+                        <div class="text-[11px] text-emerald-700 font-bold mt-3">캠퍼스 입장 →</div>
+                    </div>
+                `;
+            }).join("");
+        };
+
+        window.selectCustomUniv = function() {
+            const val = document.getElementById("custom-univ-input").value.trim();
+            if (!val) return alert("대학교 이름을 입력해 주세요.");
+            selectUniversity(val);
+        };
+
+        window.selectUniversity = function(univName) {
+            currentUniversity = univName;
+            document.getElementById("univ-selector-view").classList.add("hidden");
+            document.getElementById("univ-board-view").classList.remove("hidden");
+            document.getElementById("selected-univ-title").innerText = `🏫 ${univName} 수업 과제·팀플 게시판`;
+            renderUniversityCourses();
+        };
+
+        window.backToUnivList = function() {
+            currentUniversity = "";
+            document.getElementById("univ-board-view").classList.add("hidden");
+            document.getElementById("univ-selector-view").classList.remove("hidden");
+            renderUniversityGrid();
+        };
+
+        window.toggleCourseForm = function() {
+            document.getElementById("course-form-box").classList.toggle("hidden");
+        };
+
+        window.addInitialMemberRow = function() {
+            const nameInput = document.getElementById("init-member-name");
+            const roleInput = document.getElementById("init-member-role");
+            const name = nameInput.value.trim();
+            const role = roleInput.value.trim() || "팀원";
+            if (!name) return alert("추가할 팀원 이름을 입력해 주세요.");
+            initialCourseMembers.push({ name, role });
+            nameInput.value = "";
+            roleInput.value = "";
+            renderInitialMembersChips();
+        };
+
+        window.removeInitialMember = function(idx) {
+            initialCourseMembers.splice(idx, 1);
+            renderInitialMembersChips();
+        };
+
+        function renderInitialMembersChips() {
+            const el = document.getElementById("init-members-chips");
+            if (!initialCourseMembers.length) {
+                el.innerHTML = `<span class="text-xs text-slate-400">등록된 추가 팀원이 없습니다. (개설자 본인 1명 기본 참여)</span>`;
+                return;
+            }
+            el.innerHTML = initialCourseMembers.map((m, i) => `
+                <span class="inline-flex items-center gap-1.5 bg-white border border-emerald-300 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full">
+                    👤 ${escapeHtml(m.name)} (${escapeHtml(m.role)})
+                    <button type="button" onclick="removeInitialMember(${i})" class="text-rose-500 font-black hover:underline">&times;</button>
+                </span>
+            `).join("");
+        }
+
+        window.submitCourseProject = async function() {
+            const token = localStorage.getItem("access_token");
+            if (!token) return openAuthModal("login");
+
+            const department = document.getElementById("course-dept").value.trim();
+            const course_name = document.getElementById("course-name").value.trim();
+            const professor_name = document.getElementById("course-prof").value.trim();
+            const title = document.getElementById("course-title").value.trim();
+            const description = document.getElementById("course-desc").value.trim();
+            const author_role_type = document.querySelector('input[name="course-author-role"]:checked')?.value || "학생";
+            const max_members = parseInt(document.getElementById("course-max-members").value) || 4;
+
+            if (!department || !course_name || !title || !description) {
+                return alert("학과명, 강의명(수업명), 제목, 세부 내용을 모두 입력해 주세요.");
+            }
+
+            const needed_roles = Array.from(document.querySelectorAll('input[name="course-role"]:checked')).map(cb => cb.value);
+            const needed_disc = Array.from(document.querySelectorAll('input[name="course-disc"]:checked')).map(cb => cb.value);
+
+            const payload = {
+                project_type: "course",
+                university: currentUniversity,
+                department,
+                course_name,
+                professor_name: professor_name || "교수님 미입력",
+                author_role_type,
+                max_members,
+                category: "수업팀플",
+                title,
+                description,
+                meeting_type: document.getElementById("course-meeting").value,
+                needed_roles,
+                needed_disc,
+                commitment_level: "학점 A+ 목표",
+                available_time: "수업 전후 및 협의",
+                image_url: "",
+                initial_members: initialCourseMembers
+            };
+
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    document.getElementById("course-title").value = "";
+                    document.getElementById("course-desc").value = "";
+                    initialCourseMembers = [];
+                    renderInitialMembersChips();
+                    toggleCourseForm();
+                    await loadProjects();
+                    renderUniversityCourses();
+                } else {
+                    alert(data.detail || "등록 실패");
+                }
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") openAuthModal("login");
+            }
+        };
+
+        window.renderUniversityCourses = function() {
+            const listEl = document.getElementById("univ-course-list");
+            if (!listEl) return;
+            const deptKw = (document.getElementById("filter-univ-dept")?.value || "").trim().toLowerCase();
+            const courseKw = (document.getElementById("filter-univ-course")?.value || "").trim().toLowerCase();
+            const roleType = document.getElementById("filter-univ-role-type")?.value || "ALL";
+            const headcount = document.getElementById("filter-univ-headcount")?.value || "ALL";
+            const myEmail = localStorage.getItem("user_email");
+
+            const courses = allProjects.filter(p => {
+                if (p.project_type !== "course" || p.university !== currentUniversity) return false;
+                if (deptKw && !(p.department || "").toLowerCase().includes(deptKw)) return false;
+                if (courseKw && !((p.course_name || "").toLowerCase().includes(courseKw) || (p.professor_name || "").toLowerCase().includes(courseKw) || (p.title || "").toLowerCase().includes(courseKw))) return false;
+                if (roleType !== "ALL" && p.author_role_type !== roleType) return false;
+                if (headcount !== "ALL") {
+                    const maxM = p.max_members || 4;
+                    if (headcount === "6" && maxM < 6) return false;
+                    if (headcount !== "6" && String(maxM) !== headcount) return false;
+                }
+                return true;
+            });
+
+            if (!courses.length) {
+                listEl.innerHTML = `<div class="md:col-span-2 bg-white p-10 rounded-3xl border text-center text-sm text-slate-400">아직 '${escapeHtml(currentUniversity)}'에 등록된 해당 조건의 수업 팀플이 없습니다.<br>우측 상단 <b>[+ 학과/수업 팀플 등록하기]</b> 버튼으로 첫 수업 팀플을 개설해 보세요!</div>`;
+                return;
+            }
+
+            listEl.innerHTML = courses.map(p => renderProjectCardHTML(p, myEmail, true)).join("");
+        };
+
+        // ----------------------------------------------------
+        // 공통 카드 렌더링 (공모전 & 학교 수업 팀플)
+        // ----------------------------------------------------
+        function renderProjectCardHTML(p, myEmail, isCourse = false) {
+            const curM = p.member_count || 1;
+            const maxM = p.max_members || 4;
+            const isFull = curM >= maxM;
+            const memChips = (p.members || []).map(m => `
+                <span onclick="openUserProfileModal('${escapeHtml(m.member_email)}', ${p.id})" class="cursor-pointer bg-slate-100 hover:bg-indigo-50 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full border">
+                    👤 ${escapeHtml(m.member_name)} <span class="text-slate-400">(${escapeHtml(m.role)})</span>
+                </span>
+            `).join("");
+
+            return `
+                <div class="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" class="w-full h-48 object-cover border-b" alt="포스터">` : ''}
+                        <div class="p-6 space-y-3">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    ${isCourse ? `
+                                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full ${p.author_role_type === '교수' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${p.author_role_type === '교수' ? '👨‍🏫 교수 개설' : '🎓 학생 개설'}</span>
+                                        <span class="text-xs font-extrabold bg-slate-100 text-slate-800 px-2.5 py-1 rounded-full">${escapeHtml(p.department)}</span>
+                                    ` : `
+                                        <span class="text-xs font-extrabold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">${escapeHtml(p.category)} · ${escapeHtml(p.meeting_type)}</span>
+                                    `}
+                                </div>
+                                <span class="text-xs font-extrabold px-3 py-1 rounded-full ${isFull ? 'bg-rose-100 text-rose-700' : 'bg-indigo-600 text-white'}">
+                                    👥 ${curM} / ${maxM}명 (${maxM}인 팀 ${isFull ? '마감' : '모집중'})
+                                </span>
+                            </div>
+
+                            ${isCourse ? `
+                                <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-xs space-y-1">
+                                    <div class="font-black text-emerald-950 text-sm">📘 강의명: ${escapeHtml(p.course_name)}</div>
+                                    <div class="text-emerald-800 font-semibold">👨‍🏫 담당 교수: ${escapeHtml(p.professor_name || '-')} · 진행: ${escapeHtml(p.meeting_type)}</div>
+                                </div>
+                            ` : ''}
+
+                            <h4 class="font-extrabold text-lg text-slate-900 leading-snug">${escapeHtml(p.title)}</h4>
+                            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">${escapeHtml(p.description)}</p>
+
+                            <div class="flex flex-wrap gap-1.5 text-xs pt-1">
+                                <span class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg">필요역할: ${escapeHtml((p.needed_roles || []).join(", ") || "무관")}</span>
+                                <span class="bg-violet-50 text-violet-700 font-bold px-2.5 py-1 rounded-lg">선호성향: ${escapeHtml((p.needed_disc || []).join(", ") || "무관")}</span>
+                            </div>
+
+                            <!-- 현재 등록된 팀원 목록 (클릭 시 프로필 열람) -->
+                            <div class="pt-2 border-t border-slate-100 space-y-1.5">
+                                <div class="text-[11px] font-bold text-slate-400">현재 소속 팀원 (이름 클릭 시 프로필 열람)</div>
+                                <div class="flex flex-wrap gap-1.5">${memChips}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-5 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+                        ${p.author_email === myEmail ? `
+                            <button onclick="openApplicantsModal(${p.id})" class="flex-1 bg-amber-500 text-white px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-amber-600 transition">
+                                지원자 (${p.pending_count || 0})
+                            </button>
+                            <button onclick="openMembersModal(${p.id})" class="bg-slate-800 text-white px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-slate-900 transition">
+                                팀원 등록/강퇴
+                            </button>
+                            <button onclick="recommendForProject(${p.id})" class="bg-indigo-50 text-indigo-700 px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition">AI추천</button>
+                            <button onclick="deleteProject(${p.id})" class="bg-rose-50 text-rose-600 px-2.5 py-2.5 rounded-xl text-xs font-bold hover:bg-rose-100 transition">삭제</button>
+                        ` : `
+                            <button onclick="applyProject(${p.id})" class="flex-1 bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-700 transition shadow-xs" ${isFull ? 'disabled' : ''}>
+                                ${isFull ? '모집 마감' : '🙋‍♂️ 지원하기'}
+                            </button>
+                            <button onclick="openPreChatModal(${p.id}, '${escapeHtml(p.title)}')" class="bg-amber-500 text-white px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-amber-600 transition">
+                                💬 수락 전 사전채팅
+                            </button>
+                            <button onclick="openUserProfileModal('${escapeHtml(p.author_email)}', ${p.id})" class="bg-slate-100 text-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 transition">
+                                👤 팀장 프로필
+                            </button>
+                            <button onclick="recommendForProject(${p.id})" class="bg-indigo-50 text-indigo-700 px-2.5 py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-100 transition">추천</button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ----------------------------------------------------
+        // 👤 상세 프로필 열람 모달 로직
+        // ----------------------------------------------------
+        window.openUserProfileModal = async function(email, projectId = null) {
+            if (!email) return;
+            document.getElementById("profile-modal").classList.remove("hidden");
+            try {
+                const res = await fetch(`${API_BASE}/api/users/profile?email=${encodeURIComponent(email)}`);
+                const u = await res.json();
+
+                document.getElementById("prof-name").innerText = u.name || "이름 미입력";
+                document.getElementById("prof-sub").innerText = `${u.major || '전공 미입력'} · ${u.education || '학력 미입력'} ${u.age ? '(' + u.age + '세)' : ''}`;
+                document.getElementById("prof-disc-badge").innerText = u.disc_type ? `DISC ${u.disc_type}형` : "DISC 미진단";
+
+                const scores = u.disc_scores || { D: 0, I: 0, S: 0, C: 0 };
+                ["D", "I", "S", "C"].forEach(t => {
+                    document.getElementById(`prof-score-${t}`).innerText = `${scores[t] || 0}점`;
+                });
+
+                document.getElementById("prof-time").innerText = `${u.available_time_start || '09:00'} ~ ${u.available_time_end || '18:00'}`;
+                document.getElementById("prof-roles").innerText = (u.preferred_roles || []).join(", ") || "무관";
+                document.getElementById("prof-present").innerText = u.can_present ? "🎤 발표 가능" : "📄 자료조사/PPT 선호";
+                document.getElementById("prof-cert").innerText = u.certifications || "-";
+                document.getElementById("prof-awards").innerText = u.awards || "등록된 수상 경력 및 활동 내역이 없습니다.";
+
+                const portEl = document.getElementById("prof-portfolio");
+                if (u.portfolio_url) {
+                    portEl.href = u.portfolio_url;
+                    portEl.innerText = u.portfolio_url;
+                } else {
+                    portEl.removeAttribute("href");
+                    portEl.innerText = "미등록";
+                }
+
+                const preBtn = document.getElementById("prof-prechat-btn");
+                const myEmail = localStorage.getItem("user_email");
+                if (projectId && myEmail && email !== myEmail && !email.endsWith("@teamsync.local")) {
+                    preBtn.classList.remove("hidden");
+                    preBtn.onclick = () => {
+                        closeProfileModal();
+                        const proj = allProjects.find(p => p.id === projectId);
+                        const targetInquirer = (proj && proj.author_email === myEmail) ? email : myEmail;
+                        openPreChatModal(projectId, proj ? proj.title : "사전 문의", targetInquirer);
+                    };
+                } else {
+                    preBtn.classList.add("hidden");
+                }
+            } catch (e) {}
+        };
+
+        window.closeProfileModal = function() {
+            document.getElementById("profile-modal").classList.add("hidden");
+        };
+
+        // ----------------------------------------------------
+        // 💬 수락 전 1:1 사전 채팅 모달 로직
+        // ----------------------------------------------------
+        window.openPreChatModal = async function(projectId, projectTitle, targetInquirerEmail = null) {
+            const token = localStorage.getItem("access_token");
+            if (!token) return openAuthModal("login");
+
+            modalPreChatProjectId = projectId;
+            modalPreChatInquirerEmail = targetInquirerEmail || localStorage.getItem("user_email");
+            document.getElementById("prechat-modal-title").innerText = `[사전 채팅] ${projectTitle}`;
+            document.getElementById("prechat-modal").classList.remove("hidden");
+
+            await fetchModalPreChatMessages();
+            if (modalPreChatTimer) clearInterval(modalPreChatTimer);
+            modalPreChatTimer = setInterval(fetchModalPreChatMessages, 1500);
+        };
+
+        window.closePreChatModal = function() {
+            document.getElementById("prechat-modal").classList.add("hidden");
+            if (modalPreChatTimer) clearInterval(modalPreChatTimer);
+            modalPreChatProjectId = null;
+        };
+
+        async function fetchModalPreChatMessages() {
+            if (!modalPreChatProjectId) return;
+            try {
+                const q = modalPreChatInquirerEmail ? `?inquirer_email=${encodeURIComponent(modalPreChatInquirerEmail)}` : "";
+                const res = await apiFetch(`${API_BASE}/api/projects/${modalPreChatProjectId}/pre-chat${q}`);
+                if (!res.ok) return;
+                const msgs = await res.json();
+                const box = document.getElementById("prechat-modal-box");
+                const myEmail = localStorage.getItem("user_email");
+
+                if (!msgs.length) {
+                    box.innerHTML = `<div class="text-slate-400 text-center py-12">팀원 수락 전 궁금한 점이나 시간대·역할을 자유롭게 문의해 보세요!</div>`;
+                    return;
+                }
+                box.innerHTML = msgs.map(m => {
+                    const isMine = m.sender_email === myEmail;
+                    return isMine ? `
+                        <div class="flex flex-col items-end">
+                            <div class="max-w-[75%] bg-amber-500 text-white px-3.5 py-2 rounded-2xl rounded-tr-xs font-medium shadow-2xs">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-0.5">${escapeHtml(m.created_at)}</span>
+                        </div>
+                    ` : `
+                        <div class="flex flex-col items-start">
+                            <span class="text-[11px] font-bold text-slate-600 mb-0.5">${escapeHtml(m.sender_name)}</span>
+                            <div class="max-w-[75%] bg-white border text-slate-800 px-3.5 py-2 rounded-2xl rounded-tl-xs shadow-2xs">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-0.5">${escapeHtml(m.created_at)}</span>
+                        </div>
+                    `;
+                }).join("");
+                box.scrollTop = box.scrollHeight;
+            } catch (e) {}
+        }
+
+        window.sendPreChatFromModal = async function() {
+            if (!modalPreChatProjectId) return;
+            const input = document.getElementById("prechat-modal-input");
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${modalPreChatProjectId}/pre-chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ target_email: modalPreChatInquirerEmail, message: text })
+                });
+                if (res.ok) await fetchModalPreChatMessages();
+            } catch (e) {}
+        };
+
+        // ----------------------------------------------------
+        // 회원 인증 / DISC / 마이페이지 (내가 등록한 공모전·팀 관리)
+        // ----------------------------------------------------
         window.openAuthModal = function(mode) {
             authMode = mode;
             document.getElementById("auth-modal").classList.remove("hidden");
@@ -640,15 +1423,9 @@
             document.getElementById("signup-extra-fields").classList.toggle("hidden", mode === "login");
             document.getElementById("auth-switch-text").innerText = mode === "login" ? "아직 계정이 없으신가요?" : "이미 계정이 있으신가요?";
         };
-        window.closeAuthModal = function() {
-            document.getElementById("auth-modal").classList.add("hidden");
-        };
-        window.closeApplicantsModal = function() {
-            document.getElementById("applicants-modal").classList.add("hidden");
-        };
-        window.closeMembersModal = function() {
-            document.getElementById("members-modal").classList.add("hidden");
-        };
+        window.closeAuthModal = function() { document.getElementById("auth-modal").classList.add("hidden"); };
+        window.closeApplicantsModal = function() { document.getElementById("applicants-modal").classList.add("hidden"); };
+        window.closeMembersModal = function() { document.getElementById("members-modal").classList.add("hidden"); };
 
         window.submitAuth = async function() {
             const email = document.getElementById("auth-email").value.trim();
@@ -660,7 +1437,6 @@
                     const name = document.getElementById("auth-name").value.trim() || "팀원";
                     const age = parseInt(document.getElementById("auth-age").value) || null;
                     const major = document.getElementById("auth-major").value.trim() || "";
-
                     const res = await fetch(`${API_BASE}/api/auth/signup`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -678,7 +1454,6 @@
                     });
                     const data = await res.json();
                     if (!res.ok) return alert(data.detail || "로그인 실패");
-
                     clearSession();
                     localStorage.setItem("access_token", data.access_token);
                     localStorage.setItem("user_name", data.name);
@@ -688,19 +1463,11 @@
                     loadProjects();
                     alert(`${data.name}님 환영합니다!`);
                 }
-            } catch (e) {
-                alert("서버 통신 중 오류가 발생했습니다.");
-            }
+            } catch (e) { alert("서버 통신 중 오류가 발생했습니다."); }
         };
 
         window.logout = function() {
             clearSession();
-            document.getElementById("current-chat-title").innerText = "왼쪽에서 팀 채팅방을 선택해 주세요";
-            document.getElementById("chat-members-count").innerText = "수락된 모든 팀원과 실시간으로 대화할 수 있습니다.";
-            document.getElementById("chat-box").innerHTML = `<div class="text-slate-400 text-center text-xs py-16">로그인 후 팀 채팅방을 이용할 수 있습니다.</div>`;
-            document.getElementById("chat-member-list").innerHTML = `채팅방을 선택하면 팀원 목록이 표시됩니다.`;
-            document.getElementById("chat-input").setAttribute("disabled", "true");
-            document.getElementById("chat-send-btn").setAttribute("disabled", "true");
             showTab("home");
         };
 
@@ -721,7 +1488,7 @@
             }
         }
 
-        // 사진 파일 선택 및 리사이즈
+        // 사진 업로드 리사이즈
         window.handleImageFileSelect = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -731,16 +1498,10 @@
                 img.onload = function() {
                     const canvas = document.createElement("canvas");
                     const maxW = 800;
-                    let w = img.width;
-                    let h = img.height;
-                    if (w > maxW) {
-                        h = Math.round((h * maxW) / w);
-                        w = maxW;
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, w, h);
+                    let w = img.width, h = img.height;
+                    if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
                     uploadedImageDataUrl = canvas.toDataURL("image/jpeg", 0.82);
                     document.getElementById("proj-image-preview").src = uploadedImageDataUrl;
                     document.getElementById("proj-image-preview-wrap").classList.remove("hidden");
@@ -757,7 +1518,7 @@
             document.getElementById("proj-image-preview-wrap").classList.add("hidden");
         };
 
-        // DISC 40문항 진단
+        // DISC 40문항
         async function loadDiscQuestions() {
             try {
                 const res = await fetch(`${API_BASE}/api/disc/questions`);
@@ -765,17 +1526,14 @@
                 discQuestions = data.questions || [];
                 const container = document.getElementById("disc-questions-container");
                 if (!container) return;
-
                 container.innerHTML = discQuestions.map((q, idx) => `
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-indigo-200 transition">
-                        <div class="text-sm font-semibold text-slate-800">
-                            <span class="text-indigo-600 font-extrabold mr-1.5">Q${idx + 1}.</span>${escapeHtml(q.question)}
-                        </div>
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-slate-800"><span class="text-indigo-600 font-extrabold mr-1.5">Q${idx + 1}.</span>${escapeHtml(q.question)}</div>
                         <div class="flex items-center space-x-1.5 shrink-0">
                             ${[1, 2, 3, 4, 5].map(score => `
                                 <label class="cursor-pointer">
                                     <input type="radio" name="q_${q.id}" value="${score}" onchange="updateDiscProgress()" class="peer hidden">
-                                    <span class="w-9 h-9 flex items-center justify-center rounded-xl border bg-white text-xs font-extrabold text-slate-600 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition shadow-2xs">${score}</span>
+                                    <span class="w-9 h-9 flex items-center justify-center rounded-xl border bg-white text-xs font-extrabold text-slate-600 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition">${score}</span>
                                 </label>
                             `).join("")}
                         </div>
@@ -786,36 +1544,29 @@
 
         window.updateDiscProgress = function() {
             let answered = 0;
-            discQuestions.forEach(q => {
-                if (document.querySelector(`input[name="q_${q.id}"]:checked`)) answered++;
-            });
+            discQuestions.forEach(q => { if (document.querySelector(`input[name="q_${q.id}"]:checked`)) answered++; });
             const prog = document.getElementById("disc-progress");
             if (prog) prog.innerText = `${answered} / ${discQuestions.length} 완료`;
         };
 
         window.autoFillDiscForTest = function() {
             discQuestions.forEach(q => {
-                const randomScore = Math.floor(Math.random() * 3) + 3;
-                const radio = document.querySelector(`input[name="q_${q.id}"][value="${randomScore}"]`);
-                if (radio) radio.checked = true;
+                const rnd = Math.floor(Math.random() * 3) + 3;
+                const r = document.querySelector(`input[name="q_${q.id}"][value="${rnd}"]`);
+                if (r) r.checked = true;
             });
             updateDiscProgress();
         };
 
         window.submitDiscTest = async function() {
             const token = localStorage.getItem("access_token");
-            if (!token) {
-                alert("진단 결과를 프로필에 저장하려면 먼저 로그인해 주세요!");
-                return openAuthModal("login");
-            }
-
+            if (!token) return openAuthModal("login");
             const answers = {};
             for (const q of discQuestions) {
                 const checked = document.querySelector(`input[name="q_${q.id}"]:checked`);
                 if (!checked) return alert("모든 문항에 점수를 선택해 주세요!");
                 answers[String(q.id)] = parseInt(checked.value);
             }
-
             try {
                 const res = await apiFetch(`${API_BASE}/api/disc/submit`, {
                     method: "POST",
@@ -824,41 +1575,24 @@
                 });
                 const data = await res.json();
                 if (!res.ok) return alert(data.detail || "제출 실패");
-
                 const card = document.getElementById("disc-result-card");
                 card.classList.remove("hidden");
                 document.getElementById("res-primary-type").innerText = `${data.disc_type}형`;
-                ["D", "I", "S", "C"].forEach(t => {
-                    document.getElementById(`res-score-${t}`).innerText = `${data.disc_scores[t]}점`;
-                });
+                ["D", "I", "S", "C"].forEach(t => { document.getElementById(`res-score-${t}`).innerText = `${data.disc_scores[t]}점`; });
                 card.scrollIntoView({ behavior: "smooth" });
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                }
-            }
+            } catch (e) {}
         };
 
-        // 마이페이지 로드 및 저장
+        // 마이페이지 로드 & 내가 등록한 공모전/팀플 관리
         async function loadMyProfile() {
             const token = localStorage.getItem("access_token");
             const warn = document.getElementById("mypage-login-warning");
             const cont = document.getElementById("mypage-content");
-
-            if (!token) {
-                warn.classList.remove("hidden");
-                cont.classList.add("hidden");
-                return;
-            }
+            if (!token) { warn.classList.remove("hidden"); cont.classList.add("hidden"); return; }
 
             try {
                 const res = await apiFetch(`${API_BASE}/api/users/me`);
-                if (!res.ok) {
-                    warn.classList.remove("hidden");
-                    cont.classList.add("hidden");
-                    return;
-                }
+                if (!res.ok) { warn.classList.remove("hidden"); cont.classList.add("hidden"); return; }
                 const user = await res.json();
                 warn.classList.add("hidden");
                 cont.classList.remove("hidden");
@@ -891,14 +1625,55 @@
                 document.getElementById("edit-time-end").value = tEnd;
 
                 const roles = user.preferred_roles || [];
-                document.querySelectorAll('input[name="edit-role"]').forEach(cb => {
-                    cb.checked = roles.includes(cb.value);
-                });
-            } catch (e) {
-                warn.classList.remove("hidden");
-                cont.classList.add("hidden");
-            }
+                document.querySelectorAll('input[name="edit-role"]').forEach(cb => { cb.checked = roles.includes(cb.value); });
+            } catch (e) { warn.classList.remove("hidden"); cont.classList.add("hidden"); }
         }
+
+        window.loadMyCreatedProjects = async function() {
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/api/my-projects`);
+                const list = await res.json();
+                const el = document.getElementById("my-created-projects-list");
+                if (!list.length) {
+                    el.innerHTML = `<div class="md:col-span-2 p-8 bg-slate-50 rounded-2xl border text-center text-xs text-slate-400">내가 등록한 공모전이나 수업 팀플이 없습니다.</div>`;
+                    return;
+                }
+                el.innerHTML = list.map(p => `
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${p.project_type === 'course' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-700'}">
+                                    ${p.project_type === 'course' ? `🏫 ${escapeHtml(p.university)} · ${escapeHtml(p.course_name)}` : `🏆 ${escapeHtml(p.category)}`}
+                                </span>
+                                <span class="text-xs font-extrabold text-slate-700">👥 ${p.member_count} / ${p.max_members}명</span>
+                            </div>
+                            <h4 class="font-extrabold text-base text-slate-900">${escapeHtml(p.title)}</h4>
+                            <div class="flex flex-wrap gap-1 pt-1">
+                                ${(p.members || []).map(m => `
+                                    <span onclick="openUserProfileModal('${escapeHtml(m.member_email)}', ${p.id})" class="cursor-pointer bg-white border text-[11px] font-bold px-2 py-0.5 rounded-md">
+                                        👤 ${escapeHtml(m.member_name)}(${escapeHtml(m.role)})
+                                    </span>
+                                `).join("")}
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 pt-3 border-t">
+                            <button onclick="openApplicantsModal(${p.id})" class="flex-1 bg-amber-500 text-white text-xs font-extrabold px-3 py-2 rounded-xl hover:bg-amber-600">
+                                지원자 관리 (${p.pending_count}명)
+                            </button>
+                            <button onclick="openMembersModal(${p.id})" class="bg-slate-800 text-white text-xs font-extrabold px-3 py-2 rounded-xl hover:bg-slate-900">
+                                팀원 추가/강퇴
+                            </button>
+                            <button onclick="showTab('chat'); selectTeamChat(${p.id});" class="bg-indigo-600 text-white text-xs font-extrabold px-3 py-2 rounded-xl hover:bg-indigo-700">
+                                팀 채팅방
+                            </button>
+                            <button onclick="deleteProject(${p.id})" class="bg-rose-100 text-rose-600 text-xs font-bold px-2.5 py-2 rounded-xl hover:bg-rose-200">삭제</button>
+                        </div>
+                    </div>
+                `).join("");
+            } catch (e) {}
+        };
 
         async function loadMyApplications() {
             const token = localStorage.getItem("access_token");
@@ -908,20 +1683,20 @@
                 if (!res.ok) return;
                 const list = await res.json();
                 const el = document.getElementById("my-applied-list");
-                if (!list.length) {
-                    el.innerHTML = `<p class="text-slate-400">아직 지원한 공모전이 없습니다.</p>`;
-                    return;
-                }
+                if (!list.length) { el.innerHTML = `<p class="text-slate-400">아직 지원한 내역이 없습니다.</p>`; return; }
                 const badgeMap = {
-                    pending: `<span class="bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded">대기중</span>`,
-                    accepted: `<span class="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded">수락됨 (채팅방 오픈)</span>`,
+                    pending: `<span class="bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded">심사대기</span>`,
+                    accepted: `<span class="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded">수락됨</span>`,
                     rejected: `<span class="bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded">거절됨</span>`,
                     kicked: `<span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">강퇴됨</span>`
                 };
                 el.innerHTML = list.map(a => `
-                    <div class="p-2.5 rounded-xl bg-slate-50 border flex justify-between items-center">
-                        <span class="font-bold text-slate-800 truncate pr-2">${escapeHtml(a.project_title)}</span>
-                        ${badgeMap[a.status] || escapeHtml(a.status)}
+                    <div class="p-2.5 rounded-xl bg-slate-50 border flex justify-between items-center gap-2">
+                        <span class="font-bold text-slate-800 truncate">${escapeHtml(a.project_title)}</span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="openPreChatModal(${a.project_id}, '${escapeHtml(a.project_title)}')" class="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">💬사전톡</button>
+                            ${badgeMap[a.status] || escapeHtml(a.status)}
+                        </div>
                     </div>
                 `).join("");
             } catch (e) {}
@@ -930,7 +1705,6 @@
         window.saveProfile = async function() {
             const token = localStorage.getItem("access_token");
             if (!token) return openAuthModal("login");
-
             const preferred_roles = Array.from(document.querySelectorAll('input[name="edit-role"]:checked')).map(cb => cb.value);
             const payload = {
                 name: document.getElementById("edit-name").value.trim(),
@@ -946,33 +1720,23 @@
                 available_time_end: document.getElementById("edit-time-end").value,
                 preferred_roles
             };
-
             try {
                 const res = await apiFetch(`${API_BASE}/api/users/me`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
                 if (res.ok) {
-                    if (payload.name) {
-                        localStorage.setItem("user_name", payload.name);
-                        updateAuthUI();
-                    }
-                    alert("프로필과 활동 가능 시간이 저장되었습니다!");
+                    if (payload.name) { localStorage.setItem("user_name", payload.name); updateAuthUI(); }
+                    alert("프로필이 저장되었습니다!");
                     loadMyProfile();
-                } else {
-                    alert(data.detail || "저장 실패");
                 }
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                }
-            }
+            } catch (e) {}
         };
 
-        // 공모전 등록 및 조회
+        // ----------------------------------------------------
+        // 공모전 등록 & 지원자 관리 & 팀원 추가/강퇴 & AI 추천
+        // ----------------------------------------------------
         window.toggleProjectForm = function() {
             document.getElementById("project-form-box").classList.toggle("hidden");
         };
@@ -988,18 +1752,20 @@
             const needed_roles = Array.from(document.querySelectorAll('input[name="need-role"]:checked')).map(cb => cb.value);
             const needed_disc = Array.from(document.querySelectorAll('input[name="need-disc"]:checked')).map(cb => cb.value);
             const urlInput = document.getElementById("proj-image-url").value.trim();
-            const finalImage = uploadedImageDataUrl || urlInput;
 
             const payload = {
+                project_type: "general",
                 category: document.getElementById("proj-category").value,
                 meeting_type: document.getElementById("proj-meeting").value,
+                max_members: parseInt(document.getElementById("proj-max-members").value) || 4,
                 title,
                 description,
                 needed_roles,
                 needed_disc,
                 commitment_level: document.getElementById("proj-commit").value.trim() || "협의",
                 available_time: "상시 협의",
-                image_url: finalImage
+                image_url: uploadedImageDataUrl || urlInput,
+                initial_members: []
             };
 
             try {
@@ -1016,15 +1782,8 @@
                     clearSelectedImage();
                     toggleProjectForm();
                     loadProjects();
-                } else {
-                    alert(data.detail || "등록 실패");
                 }
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                }
-            }
+            } catch (e) {}
         };
 
         async function loadProjects() {
@@ -1032,65 +1791,43 @@
                 const res = await fetch(`${API_BASE}/api/projects`);
                 allProjects = await res.json();
                 renderFilteredProjects();
+                if (currentUniversity) renderUniversityCourses();
+                renderUniversityGrid();
             } catch (e) {}
         }
 
         window.renderFilteredProjects = function() {
             const filter = document.getElementById("filter-category")?.value || "ALL";
+            const headcount = document.getElementById("filter-headcount")?.value || "ALL";
             const listEl = document.getElementById("project-list");
             const myEmail = localStorage.getItem("user_email");
 
-            const filtered = filter === "ALL" ? allProjects : allProjects.filter(p => p.category === filter);
+            const generalProjects = allProjects.filter(p => (p.project_type || "general") === "general");
+            const filtered = generalProjects.filter(p => {
+                if (filter !== "ALL" && p.category !== filter) return false;
+                if (headcount !== "ALL") {
+                    const maxM = p.max_members || 4;
+                    if (headcount === "6" && maxM < 6) return false;
+                    if (headcount !== "6" && String(maxM) !== headcount) return false;
+                }
+                return true;
+            });
+
             if (!filtered.length) {
-                listEl.innerHTML = `<div class="md:col-span-2 bg-white p-10 rounded-3xl border text-center text-sm text-slate-400">등록된 모집글이 없습니다. 첫 모집글을 작성해 보세요!</div>`;
+                listEl.innerHTML = `<div class="md:col-span-2 bg-white p-10 rounded-3xl border text-center text-sm text-slate-400">등록된 공모전 모집글이 없습니다.</div>`;
                 return;
             }
-
-            listEl.innerHTML = filtered.map(p => `
-                <div class="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between">
-                    <div>
-                        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" class="w-full h-52 object-cover border-b" alt="포스터">` : ''}
-                        <div class="p-6 space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs font-extrabold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">${escapeHtml(p.category)} · ${escapeHtml(p.meeting_type)}</span>
-                                <span class="text-xs font-semibold text-slate-400">👥 현재 팀원 ${p.member_count || 1}명</span>
-                            </div>
-                            <h4 class="font-extrabold text-lg text-slate-900 leading-snug">${escapeHtml(p.title)}</h4>
-                            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">${escapeHtml(p.description)}</p>
-                            <div class="flex flex-wrap gap-1.5 text-xs pt-1">
-                                <span class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg">필요역할: ${escapeHtml((p.needed_roles || []).join(", ") || "무관")}</span>
-                                <span class="bg-violet-50 text-violet-700 font-bold px-2.5 py-1 rounded-lg">선호성향: ${escapeHtml((p.needed_disc || []).join(", ") || "무관")}</span>
-                            </div>
-                            <div class="text-xs text-slate-400 pt-1">작성자: <b class="text-slate-600">${escapeHtml(p.author_name || p.author_email)}</b> (${escapeHtml(p.created_at)})</div>
-                        </div>
-                    </div>
-
-                    <div class="px-6 pb-5 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                        ${p.author_email === myEmail ? `
-                            <button onclick="openApplicantsModal(${p.id})" class="flex-1 bg-amber-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold hover:bg-amber-600 transition">
-                                지원자 (${p.pending_count || 0})
-                            </button>
-                            <button onclick="openMembersModal(${p.id})" class="bg-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold hover:bg-slate-900 transition">
-                                팀원 관리/강퇴
-                            </button>
-                            <button onclick="recommendForProject(${p.id})" class="bg-indigo-50 text-indigo-700 px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition">AI추천</button>
-                            <button onclick="deleteProject(${p.id})" class="bg-rose-50 text-rose-600 px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-rose-100 transition">삭제</button>
-                        ` : `
-                            <button onclick="applyProject(${p.id})" class="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-700 transition shadow-xs">
-                                🙋‍♂️ 이 공모전에 지원하기
-                            </button>
-                            <button onclick="recommendForProject(${p.id})" class="bg-slate-100 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 transition">맞춤 추천보기</button>
-                        `}
-                    </div>
-                </div>
-            `).join("");
+            listEl.innerHTML = filtered.map(p => renderProjectCardHTML(p, myEmail, false)).join("");
         };
 
         window.deleteProject = async function(projectId) {
             if (!confirm("정말 이 모집글을 삭제하시겠습니까?")) return;
             try {
                 const res = await apiFetch(`${API_BASE}/api/projects/${projectId}`, { method: "DELETE" });
-                if (res.ok) loadProjects();
+                if (res.ok) {
+                    loadProjects();
+                    loadMyCreatedProjects();
+                }
             } catch (e) {}
         };
 
@@ -1109,19 +1846,14 @@
                 const data = await res.json();
                 alert(data.message || data.detail);
                 loadProjects();
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                }
-            }
+            } catch (e) {}
         };
 
-        // 지원자 관리 모달
         window.openApplicantsModal = async function(projectId) {
             try {
                 const res = await apiFetch(`${API_BASE}/api/projects/${projectId}/applications`);
                 const apps = await res.json();
+                const proj = allProjects.find(p => p.id === projectId);
                 const listEl = document.getElementById("applicants-list");
                 document.getElementById("applicants-modal").classList.remove("hidden");
 
@@ -1139,11 +1871,13 @@
                                 <span class="text-xs text-slate-500">${escapeHtml(app.major || '전공 미입력')}</span>
                             </div>
                             <p class="text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded-lg border">"${escapeHtml(app.message || '열심히 참여하겠습니다!')}"</p>
-                            <p class="text-[11px] text-slate-400">⏰ 활동 가능: ${escapeHtml(app.available_time_start || '09:00')} ~ ${escapeHtml(app.available_time_end || '18:00')} | 역할: ${escapeHtml((app.preferred_roles || []).join(', ') || '-')}</p>
+                            <p class="text-[11px] text-slate-400">⏰ 활동 가능: ${escapeHtml(app.available_time_start || '09:00')} ~ ${escapeHtml(app.available_time_end || '18:00')}</p>
                         </div>
-                        <div class="flex gap-1.5 shrink-0">
-                            <button onclick="handleApplication(${app.id}, 'accept')" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-emerald-700">수락</button>
-                            <button onclick="handleApplication(${app.id}, 'reject')" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-rose-600">거절</button>
+                        <div class="flex flex-wrap gap-1.5 shrink-0">
+                            <button onclick="openUserProfileModal('${escapeHtml(app.applicant_email)}', ${projectId})" class="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-900">👤 프로필 보기</button>
+                            <button onclick="openPreChatModal(${projectId}, '${escapeHtml(proj ? proj.title : '사전 채팅')}', '${escapeHtml(app.applicant_email)}')" class="bg-amber-500 text-white px-3 py-2 rounded-xl text-xs font-extrabold hover:bg-amber-600">💬 사전채팅</button>
+                            <button onclick="handleApplication(${app.id}, 'accept')" class="bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-extrabold hover:bg-emerald-700">수락</button>
+                            <button onclick="handleApplication(${app.id}, 'reject')" class="bg-rose-500 text-white px-3 py-2 rounded-xl text-xs font-extrabold hover:bg-rose-600">거절</button>
                         </div>
                     </div>
                 `).join("");
@@ -1160,20 +1894,19 @@
                 const data = await res.json();
                 if (!res.ok) return alert(data.detail || "처리 실패");
 
-                const row = document.getElementById(`app-row-${appId}`);
-                if (row) row.remove();
-
+                document.getElementById(`app-row-${appId}`)?.remove();
                 const listEl = document.getElementById("applicants-list");
                 if (listEl && listEl.children.length === 0) {
                     listEl.innerHTML = `<p class="text-sm text-slate-400 py-6 text-center">모든 지원자 처리를 완료했습니다!</p>`;
                 }
                 alert(data.message);
                 loadProjects();
+                loadMyCreatedProjects();
             } catch (e) {}
         };
 
-        // 게시판 팀원 관리 및 강퇴 모달
         window.openMembersModal = async function(projectId) {
+            managingProjectId = projectId;
             document.getElementById("members-modal").classList.remove("hidden");
             const listEl = document.getElementById("modal-members-list");
             listEl.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">팀원 목록을 불러오는 중...</p>`;
@@ -1182,26 +1915,49 @@
                 const members = await res.json();
                 const myEmail = localStorage.getItem("user_email");
                 listEl.innerHTML = members.map(m => `
-                    <div class="p-3.5 bg-slate-50 rounded-2xl border flex justify-between items-center">
+                    <div class="p-3.5 bg-slate-50 rounded-2xl border flex justify-between items-center gap-2">
                         <div>
                             <div class="flex items-center gap-1.5">
                                 <span class="font-extrabold text-sm text-slate-900">${escapeHtml(m.member_name)}</span>
-                                <span class="text-[11px] font-bold px-2 py-0.5 rounded ${m.role === '팀장' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}">${escapeHtml(m.role)}</span>
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded ${m.role.startsWith('팀장') ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}">${escapeHtml(m.role)}</span>
                                 <span class="text-[11px] text-indigo-600 font-bold">${m.disc_type ? escapeHtml(m.disc_type) + '형' : ''}</span>
                             </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(m.member_email)} · ⏰ ${escapeHtml(m.available_time_start || '09:00')}~${escapeHtml(m.available_time_end || '18:00')}</p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">⏰ ${escapeHtml(m.available_time_start || '09:00')}~${escapeHtml(m.available_time_end || '18:00')}</p>
                         </div>
-                        ${m.member_email !== myEmail ? `
-                            <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', true)" class="bg-rose-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl hover:bg-rose-600 transition">강퇴</button>
-                        ` : `<span class="text-[11px] text-slate-400 font-semibold">본인</span>`}
+                        <div class="flex gap-1.5">
+                            <button onclick="openUserProfileModal('${escapeHtml(m.member_email)}', ${projectId})" class="bg-white border text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-xl hover:bg-slate-100">👤 프로필</button>
+                            ${m.member_email !== myEmail ? `
+                                <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', true)" class="bg-rose-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl hover:bg-rose-600">강퇴</button>
+                            ` : `<span class="text-[11px] text-slate-400 font-semibold self-center px-1">본인</span>`}
+                        </div>
                     </div>
                 `).join("");
             } catch (e) {}
         };
 
-        // 팀원 강퇴 실행 함수 (채팅방 사이드바 & 게시판 모달 공용)
+        window.addManualMemberFromModal = async function() {
+            if (!managingProjectId) return;
+            const name = document.getElementById("modal-add-member-name").value.trim();
+            const role = document.getElementById("modal-add-member-role").value.trim() || "팀원";
+            if (!name) return alert("팀원 이름을 입력해 주세요.");
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${managingProjectId}/add-member`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, role })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || "추가 실패");
+                document.getElementById("modal-add-member-name").value = "";
+                document.getElementById("modal-add-member-role").value = "";
+                openMembersModal(managingProjectId);
+                loadProjects();
+                loadMyCreatedProjects();
+            } catch (e) {}
+        };
+
         window.kickMember = async function(projectId, memberEmail, memberName, fromModal = false) {
-            if (!confirm(`정말 '${memberName}'님을 팀에서 강퇴하시겠습니까?\n강퇴 시 해당 팀원은 즉시 단체 채팅방에서 제외됩니다.`)) return;
+            if (!confirm(`정말 '${memberName}'님을 팀에서 강퇴하시겠습니까?`)) return;
             try {
                 const res = await apiFetch(`${API_BASE}/api/projects/${projectId}/kick`, {
                     method: "POST",
@@ -1210,22 +1966,12 @@
                 });
                 const data = await res.json();
                 if (!res.ok) return alert(data.detail || "강퇴 실패");
-
                 alert(data.message);
                 loadProjects();
-                if (fromModal) {
-                    openMembersModal(projectId);
-                }
-                if (activeProjectId === projectId) {
-                    loadTeamMembers(projectId);
-                    await fetchNewMessages();
-                }
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                }
-            }
+                loadMyCreatedProjects();
+                if (fromModal) openMembersModal(projectId);
+                if (activeProjectId === projectId) loadTeamMembers(projectId);
+            } catch (e) {}
         };
 
         window.recommendForProject = async function(projectId) {
@@ -1233,7 +1979,7 @@
             const data = await res.json();
             const box = document.getElementById("recommend-box");
             const list = document.getElementById("recommend-list");
-            document.getElementById("recommend-title").innerText = `'${data.project_title}' 맞춤 추천 팀원`;
+            document.getElementById("recommend-title").innerText = `'${data.project_title}' AI 성향 추천 팀원`;
             box.classList.remove("hidden");
 
             if (!data.recommended_users || !data.recommended_users.length) {
@@ -1242,74 +1988,114 @@
             }
 
             list.innerHTML = data.recommended_users.map(u => `
-                <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-xs space-y-1.5">
-                    <div class="flex justify-between items-center">
-                        <span class="font-extrabold text-slate-900">${escapeHtml(u.name)} <span class="text-xs font-normal text-slate-500">(${escapeHtml(u.major || "전공미입력")})</span></span>
-                        <span class="bg-indigo-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">${escapeHtml(u.disc_type || '미진단')} · 매칭 ${u.match_score}점</span>
+                <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-xs flex justify-between items-center gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-slate-900">${escapeHtml(u.name)}</span>
+                            <span class="text-xs text-slate-500">(${escapeHtml(u.major || "전공미입력")})</span>
+                            <span class="bg-indigo-600 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full">${escapeHtml(u.disc_type || '미진단')} · ${u.match_score}점</span>
+                        </div>
+                        <div class="text-xs text-indigo-700 font-bold">${escapeHtml(u.match_reasons.join(" · "))}</div>
+                        <div class="text-[11px] text-slate-500">⏰ ${escapeHtml(u.available_time_start || '09:00')}~${escapeHtml(u.available_time_end || '18:00')} | 역할: ${escapeHtml((u.preferred_roles || []).join(", ") || "-")}</div>
                     </div>
-                    <div class="text-xs text-indigo-700 font-bold">${escapeHtml(u.match_reasons.join(" · "))}</div>
-                    <div class="text-xs text-slate-500">⏰ 활동시간: ${escapeHtml(u.available_time_start || '09:00')} ~ ${escapeHtml(u.available_time_end || '18:00')} | 희망역할: ${escapeHtml((u.preferred_roles || []).join(", ") || "-")}</div>
+                    <button onclick="openUserProfileModal('${escapeHtml(u.email)}', ${projectId})" class="shrink-0 bg-slate-900 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl hover:bg-slate-800">👤 프로필 보기</button>
                 </div>
             `).join("");
             box.scrollIntoView({ behavior: "smooth" });
         };
 
         // ----------------------------------------------------
-        // 팀 단체 채팅 로직 (DB 실시간 동기화 + 팀원 강퇴 연동)
+        // 💬 팀 단체 채팅방 & 수락 전 사전 채팅 탭 통합 로직
         // ----------------------------------------------------
         window.loadMyTeams = async function() {
             const token = localStorage.getItem("access_token");
             const listEl = document.getElementById("my-teams-list");
             if (!token) {
-                listEl.innerHTML = `<p class="text-xs text-rose-500 py-4 text-center font-bold">로그인 후 팀 채팅방을 이용할 수 있습니다.</p>`;
+                listEl.innerHTML = `<p class="text-xs text-rose-500 py-3 text-center font-bold">로그인이 필요합니다.</p>`;
                 return;
             }
             try {
                 const res = await apiFetch(`${API_BASE}/api/my-teams`);
-                const teams = await res.json();
-                myTeamsCache = Array.isArray(teams) ? teams : [];
-
+                myTeamsCache = await res.json();
                 if (!myTeamsCache.length) {
-                    activeProjectId = null;
-                    if (chatPollTimer) clearInterval(chatPollTimer);
-                    listEl.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">참여 중인 팀이 없습니다.<br>공모전을 개설하거나 지원 수락을 받아보세요!</p>`;
-                    document.getElementById("chat-member-list").innerHTML = `채팅방을 선택하면 팀원 목록이 표시됩니다.`;
+                    listEl.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center">참여 중인 팀이 없습니다.</p>`;
                     return;
                 }
-
                 listEl.innerHTML = myTeamsCache.map(t => `
-                    <div onclick="selectTeamChat(${t.id})" class="p-3.5 rounded-2xl border cursor-pointer transition ${activeProjectId === t.id ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 hover:bg-indigo-50/50 border-slate-200'}">
+                    <div onclick="selectTeamChat(${t.id})" class="p-3 rounded-2xl border cursor-pointer transition ${activeChatMode === 'team' && activeProjectId === t.id ? 'bg-indigo-50 border-indigo-400' : 'bg-slate-50 hover:bg-indigo-50/40 border-slate-200'}">
                         <div class="flex justify-between items-center">
-                            <span class="text-[11px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-md">${escapeHtml(t.category)}</span>
-                            <span class="text-[11px] text-slate-500 font-semibold">${escapeHtml(t.role)} · 👥 ${t.member_count}명</span>
+                            <span class="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded">${escapeHtml(t.project_type === 'course' ? t.university : t.category)}</span>
+                            <span class="text-[11px] text-slate-500 font-semibold">👥 ${t.member_count}/${t.max_members || 4}명</span>
                         </div>
-                        <h4 class="font-extrabold text-sm text-slate-900 mt-1.5 truncate">${escapeHtml(t.title)}</h4>
-                        <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(t.last_message || '')}</p>
+                        <h4 class="font-extrabold text-xs text-slate-900 mt-1 truncate">${escapeHtml(t.title)}</h4>
+                        <p class="text-[11px] text-slate-500 truncate">${escapeHtml(t.last_message || '')}</p>
                     </div>
                 `).join("");
+            } catch (e) {}
+        };
 
-                const stillMember = myTeamsCache.some(t => t.id === activeProjectId);
-                if (!stillMember && myTeamsCache.length > 0) {
-                    selectTeamChat(myTeamsCache[0].id);
+        window.loadMyPreChats = async function() {
+            const token = localStorage.getItem("access_token");
+            const listEl = document.getElementById("my-prechats-list");
+            if (!token) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/api/pre-chats`);
+                myPreChatsCache = await res.json();
+                if (!myPreChatsCache.length) {
+                    listEl.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center">사전 문의 내역이 없습니다.</p>`;
+                    return;
                 }
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    listEl.innerHTML = `<p class="text-xs text-rose-500 py-4 text-center font-bold">세션이 만료되었습니다. 다시 로그인해 주세요.</p>`;
-                }
-            }
+                const myEmail = localStorage.getItem("user_email");
+                listEl.innerHTML = myPreChatsCache.map(c => {
+                    const partnerName = c.author_email === myEmail ? `지원자: ${c.inquirer_name}` : `팀장: ${c.author_name || c.author_email}`;
+                    const isSelected = activeChatMode === "pre" && activeProjectId === c.project_id && activePreChatInquirerEmail === c.inquirer_email;
+                    return `
+                        <div onclick="selectPreChatInTab(${c.project_id}, '${escapeHtml(c.inquirer_email)}', '${escapeHtml(c.project_title)}', '${escapeHtml(partnerName)}')" class="p-3 rounded-2xl border cursor-pointer transition ${isSelected ? 'bg-amber-50 border-amber-400' : 'bg-slate-50 hover:bg-amber-50/40 border-slate-200'}">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded">사전채팅</span>
+                                <span class="text-[11px] font-bold text-slate-600">${escapeHtml(partnerName)}</span>
+                            </div>
+                            <h4 class="font-extrabold text-xs text-slate-900 mt-1 truncate">${escapeHtml(c.project_title)}</h4>
+                            <p class="text-[11px] text-slate-500 truncate">${escapeHtml(c.last_message || '')}</p>
+                        </div>
+                    `;
+                }).join("");
+            } catch (e) {}
         };
 
         window.selectTeamChat = async function(projectId) {
+            activeChatMode = "team";
             activeProjectId = projectId;
             lastMessageId = 0;
 
             const teamObj = myTeamsCache.find(p => p.id === projectId) || allProjects.find(p => p.id === projectId);
-            document.getElementById("current-chat-title").innerText = teamObj ? teamObj.title : `팀 채팅방 #${projectId}`;
+            document.getElementById("current-chat-title").innerText = teamObj ? `👥 [단체톡] ${teamObj.title}` : `팀 단체 채팅방 #${projectId}`;
             document.getElementById("chat-input").removeAttribute("disabled");
             document.getElementById("chat-send-btn").removeAttribute("disabled");
             document.getElementById("chat-box").innerHTML = "";
 
+            loadMyTeams();
+            loadMyPreChats();
             loadTeamMembers(projectId);
+            await fetchNewMessages();
+
+            if (chatPollTimer) clearInterval(chatPollTimer);
+            chatPollTimer = setInterval(fetchNewMessages, 1500);
+        };
+
+        window.selectPreChatInTab = async function(projectId, inquirerEmail, projectTitle, partnerLabel) {
+            activeChatMode = "pre";
+            activeProjectId = projectId;
+            activePreChatInquirerEmail = inquirerEmail;
+
+            document.getElementById("current-chat-title").innerText = `💬 [수락 전 사전채팅] ${projectTitle}`;
+            document.getElementById("chat-members-count").innerText = `${partnerLabel}님과의 1:1 사전 대화`;
+            document.getElementById("chat-input").removeAttribute("disabled");
+            document.getElementById("chat-send-btn").removeAttribute("disabled");
+            document.getElementById("chat-box").innerHTML = "";
+
+            loadMyTeams();
+            loadMyPreChats();
             await fetchNewMessages();
 
             if (chatPollTimer) clearInterval(chatPollTimer);
@@ -1321,21 +2107,21 @@
                 const res = await fetch(`${API_BASE}/api/projects/${projectId}/members`);
                 const members = await res.json();
                 const myEmail = localStorage.getItem("user_email");
-                const isLeader = members.some(m => m.member_email === myEmail && m.role === "팀장");
+                const isLeader = members.some(m => m.member_email === myEmail && m.role.startsWith("팀장"));
 
                 document.getElementById("chat-members-count").innerText = `참여 팀원 총 ${members.length}명 (${members.map(m => m.member_name).join(", ")})`;
                 const memEl = document.getElementById("chat-member-list");
                 memEl.innerHTML = members.map(m => `
                     <div class="p-2.5 bg-slate-50 rounded-xl border flex justify-between items-center gap-2">
-                        <div class="min-w-0">
+                        <div class="min-w-0 cursor-pointer" onclick="openUserProfileModal('${escapeHtml(m.member_email)}', ${projectId})">
                             <div class="flex items-center gap-1">
-                                <span class="font-extrabold text-slate-800 truncate">${escapeHtml(m.member_name)}</span>
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${m.role === '팀장' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}">${escapeHtml(m.role)}</span>
+                                <span class="font-extrabold text-slate-800 truncate hover:text-indigo-600">${escapeHtml(m.member_name)}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${m.role.startsWith('팀장') ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}">${escapeHtml(m.role)}</span>
                             </div>
                             <div class="text-[11px] text-slate-500 mt-0.5">⏰ ${escapeHtml(m.available_time_start || '09:00')}~${escapeHtml(m.available_time_end || '18:00')} · ${m.disc_type ? escapeHtml(m.disc_type) + '형' : '미진단'}</div>
                         </div>
                         ${isLeader && m.member_email !== myEmail ? `
-                            <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', false)" class="shrink-0 bg-rose-500 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] hover:bg-rose-600 transition">강퇴</button>
+                            <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', false)" class="shrink-0 bg-rose-500 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] hover:bg-rose-600">강퇴</button>
                         ` : ``}
                     </div>
                 `).join("");
@@ -1346,90 +2132,86 @@
             if (!activeProjectId) return;
             const token = localStorage.getItem("access_token");
             if (!token) return;
+
+            if (activeChatMode === "pre") {
+                try {
+                    const res = await apiFetch(`${API_BASE}/api/projects/${activeProjectId}/pre-chat?inquirer_email=${encodeURIComponent(activePreChatInquirerEmail)}`);
+                    if (!res.ok) return;
+                    const msgs = await res.json();
+                    const box = document.getElementById("chat-box");
+                    const myEmail = localStorage.getItem("user_email");
+                    box.innerHTML = msgs.map(m => m.sender_email === myEmail ? `
+                        <div class="flex flex-col items-end">
+                            <div class="max-w-[75%] bg-amber-500 text-white px-4 py-2.5 rounded-2xl rounded-tr-xs text-sm shadow-xs">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-1">${escapeHtml(m.created_at)}</span>
+                        </div>
+                    ` : `
+                        <div class="flex flex-col items-start">
+                            <span class="text-xs font-bold text-slate-600 mb-1 ml-1">${escapeHtml(m.sender_name)}</span>
+                            <div class="max-w-[75%] bg-white border text-slate-800 px-4 py-2.5 rounded-2xl rounded-tl-xs text-sm shadow-2xs">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-1 ml-1">${escapeHtml(m.created_at)}</span>
+                        </div>
+                    `).join("");
+                    box.scrollTop = box.scrollHeight;
+                } catch (e) {}
+                return;
+            }
+
             try {
                 const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/messages?after_id=${lastMessageId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                if (res.status === 403) {
-                    clearInterval(chatPollTimer);
-                    activeProjectId = null;
-                    alert("팀에서 제외되어 채팅방 접근 권한이 없습니다.");
-                    loadMyTeams();
-                    return;
-                }
-                if (res.status === 401) {
-                    clearSession();
-                    return;
-                }
                 if (!res.ok) return;
-
                 const msgs = await res.json();
                 if (!msgs.length) return;
 
                 const box = document.getElementById("chat-box");
                 const myEmail = localStorage.getItem("user_email");
-                let hasSystemChange = false;
 
                 msgs.forEach(m => {
                     if (m.id <= lastMessageId) return;
                     lastMessageId = m.id;
-
                     const wrap = document.createElement("div");
                     if (m.sender_email === "system") {
-                        hasSystemChange = true;
                         wrap.className = "text-center my-2";
                         wrap.innerHTML = `<span class="inline-block bg-slate-200/80 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">${escapeHtml(m.message)}</span>`;
                     } else if (m.sender_email === myEmail) {
                         wrap.className = "flex flex-col items-end";
-                        wrap.innerHTML = `
-                            <div class="max-w-[75%] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-xs text-sm shadow-xs break-words">${escapeHtml(m.message)}</div>
-                            <span class="text-[10px] text-slate-400 mt-1">${escapeHtml(m.created_at)}</span>
-                        `;
+                        wrap.innerHTML = `<div class="max-w-[75%] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-xs text-sm shadow-xs break-words">${escapeHtml(m.message)}</div><span class="text-[10px] text-slate-400 mt-1">${escapeHtml(m.created_at)}</span>`;
                     } else {
                         wrap.className = "flex flex-col items-start";
-                        wrap.innerHTML = `
-                            <span class="text-xs font-bold text-slate-600 mb-1 ml-1">${escapeHtml(m.sender_name)}</span>
-                            <div class="max-w-[75%] bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-2xl rounded-tl-xs text-sm shadow-2xs break-words">${escapeHtml(m.message)}</div>
-                            <span class="text-[10px] text-slate-400 mt-1 ml-1">${escapeHtml(m.created_at)}</span>
-                        `;
+                        wrap.innerHTML = `<span class="text-xs font-bold text-slate-600 mb-1 ml-1">${escapeHtml(m.sender_name)}</span><div class="max-w-[75%] bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-2xl rounded-tl-xs text-sm shadow-2xs break-words">${escapeHtml(m.message)}</div><span class="text-[10px] text-slate-400 mt-1 ml-1">${escapeHtml(m.created_at)}</span>`;
                     }
                     box.appendChild(wrap);
                 });
                 box.scrollTop = box.scrollHeight;
-
-                if (hasSystemChange && activeProjectId) {
-                    loadTeamMembers(activeProjectId);
-                }
             } catch (e) {}
         }
 
         window.sendChatMessage = async function() {
-            if (!activeProjectId) return alert("왼쪽 목록에서 먼저 팀 채팅방을 선택해 주세요.");
+            if (!activeProjectId) return alert("왼쪽 목록에서 먼저 채팅방을 선택해 주세요.");
             const input = document.getElementById("chat-input");
             const text = input.value.trim();
             if (!text) return;
-
             input.value = "";
+
             try {
-                const res = await apiFetch(`${API_BASE}/api/projects/${activeProjectId}/messages`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: text })
-                });
-                if (res.ok) {
-                    await fetchNewMessages();
+                if (activeChatMode === "pre") {
+                    const res = await apiFetch(`${API_BASE}/api/projects/${activeProjectId}/pre-chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ target_email: activePreChatInquirerEmail, message: text })
+                    });
+                    if (res.ok) await fetchNewMessages();
                 } else {
-                    const err = await res.json();
-                    alert(err.detail || "전송 실패");
+                    const res = await apiFetch(`${API_BASE}/api/projects/${activeProjectId}/messages`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message: text })
+                    });
+                    if (res.ok) await fetchNewMessages();
                 }
-            } catch (e) {
-                if (e.message === "UNAUTHORIZED") {
-                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-                    openAuthModal("login");
-                } else {
-                    alert("메시지 전송 중 오류가 발생했습니다.");
-                }
-            }
+            } catch (e) {}
         };
     </script>
 </body>
