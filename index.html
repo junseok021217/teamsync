@@ -94,8 +94,8 @@
                 </div>
                 <div onclick="showTab('chat')" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 cursor-pointer transition">
                     <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black mb-3">CHAT</div>
-                    <div class="font-bold text-slate-900 mb-1">수락 팀원 전용 단체톡</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">지원이 수락되면 팀장과 모든 팀원이 함께 대화할 수 있는 실시간 단체 채팅방이 열립니다.</p>
+                    <div class="font-bold text-slate-900 mb-1">단체톡 & 팀원 관리</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">수락된 팀원들과 실시간 단체 대화를 나누고, 팀장은 필요 시 팀원을 강퇴할 수 있습니다.</p>
                 </div>
             </div>
         </section>
@@ -118,7 +118,7 @@
                 </div>
             </div>
 
-            <!-- 새 모집글 작성 폼 (사진 파일 직접 첨부 + URL 모두 지원) -->
+            <!-- 새 모집글 작성 폼 -->
             <div id="project-form-box" class="hidden bg-white p-6 md:p-8 rounded-3xl shadow-lg border-2 border-indigo-100 space-y-5">
                 <div class="flex justify-between items-center border-b pb-3">
                     <h3 class="font-extrabold text-lg text-slate-900">✨ 새 팀원 모집 공고 등록</h3>
@@ -402,7 +402,7 @@
         <!-- 5. 팀 단체 채팅방 탭 -->
         <section id="tab-chat" class="hidden">
             <div class="grid md:grid-cols-3 gap-6">
-                <!-- 좌측: 내가 속한 팀 목록 & 팀원 정보 -->
+                <!-- 좌측: 내가 속한 팀 목록 & 팀원 정보/강퇴 -->
                 <div class="space-y-4">
                     <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
                         <div class="flex justify-between items-center">
@@ -415,9 +415,12 @@
                     </div>
 
                     <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80 space-y-3">
-                        <h4 class="text-sm font-extrabold text-slate-900">👥 현재 채팅방 팀원 목록</h4>
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-sm font-extrabold text-slate-900">👥 현재 채팅방 팀원 관리</h4>
+                            <span class="text-[11px] text-slate-400">팀장 강퇴 가능</span>
+                        </div>
                         <div id="chat-member-list" class="space-y-2 text-xs text-slate-500">
-                            채팅방을 선택하면 팀원들의 성향과 활동 가능 시간이 표시됩니다.
+                            채팅방을 선택하면 팀원 목록이 표시됩니다.
                         </div>
                     </div>
                 </div>
@@ -501,23 +504,74 @@
         </div>
     </div>
 
+    <!-- 현재 팀원 관리 및 강퇴 모달 (게시판용) -->
+    <div id="members-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-extrabold text-lg text-slate-900">👥 현재 팀원 관리 및 강퇴</h3>
+                    <p class="text-xs text-slate-500">강퇴된 팀원은 팀 목록 및 단체 채팅방에서 즉시 제외됩니다.</p>
+                </div>
+                <button onclick="closeMembersModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div id="modal-members-list" class="space-y-2.5 max-h-80 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <!-- 스크립트 로직 -->
     <script>
         const API_BASE = "";
         let authMode = "login";
         let discQuestions = [];
         let allProjects = [];
+        let myTeamsCache = [];
         let uploadedImageDataUrl = "";
 
-        // 채팅 관련 상태
         let activeProjectId = null;
         let lastMessageId = 0;
         let chatPollTimer = null;
-        let currentWs = null;
 
-        window.onload = () => {
+        function escapeHtml(str) {
+            if (!str) return "";
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function clearSession() {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("user_name");
+            localStorage.removeItem("user_email");
+            activeProjectId = null;
+            lastMessageId = 0;
+            myTeamsCache = [];
+            if (chatPollTimer) {
+                clearInterval(chatPollTimer);
+                chatPollTimer = null;
+            }
+            updateAuthUI();
+        }
+
+        async function apiFetch(url, options = {}) {
+            const token = localStorage.getItem("access_token");
+            const headers = { ...(options.headers || {}) };
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+            const res = await fetch(url, { ...options, headers });
+            if (res.status === 401) {
+                clearSession();
+                throw new Error("UNAUTHORIZED");
+            }
+            return res;
+        }
+
+        window.onload = async () => {
             populateTimeDropdowns();
             updateAuthUI();
+            await verifySessionSilently();
             loadDiscQuestions();
             loadProjects();
 
@@ -529,7 +583,24 @@
             });
         };
 
-        // 00:00 ~ 24:00 시간 드롭다운 생성
+        async function verifySessionSilently() {
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/users/me`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    clearSession();
+                } else {
+                    const user = await res.json();
+                    localStorage.setItem("user_name", user.name);
+                    localStorage.setItem("user_email", user.email);
+                    updateAuthUI();
+                }
+            } catch (e) {}
+        }
+
         function populateTimeDropdowns() {
             const startSelect = document.getElementById("edit-time-start");
             const endSelect = document.getElementById("edit-time-end");
@@ -546,7 +617,6 @@
             endSelect.value = "18:00";
         }
 
-        // 탭 전환
         window.showTab = function(tabName) {
             ["home", "projects", "disc", "mypage", "chat"].forEach(t => {
                 document.getElementById(`tab-${t}`)?.classList.add("hidden");
@@ -563,7 +633,6 @@
             if (tabName === "chat") loadMyTeams();
         };
 
-        // 로그인/회원가입 모달
         window.openAuthModal = function(mode) {
             authMode = mode;
             document.getElementById("auth-modal").classList.remove("hidden");
@@ -576,6 +645,9 @@
         };
         window.closeApplicantsModal = function() {
             document.getElementById("applicants-modal").classList.add("hidden");
+        };
+        window.closeMembersModal = function() {
+            document.getElementById("members-modal").classList.add("hidden");
         };
 
         window.submitAuth = async function() {
@@ -607,6 +679,7 @@
                     const data = await res.json();
                     if (!res.ok) return alert(data.detail || "로그인 실패");
 
+                    clearSession();
                     localStorage.setItem("access_token", data.access_token);
                     localStorage.setItem("user_name", data.name);
                     localStorage.setItem("user_email", data.email);
@@ -621,12 +694,13 @@
         };
 
         window.logout = function() {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("user_name");
-            localStorage.removeItem("user_email");
-            if (chatPollTimer) clearInterval(chatPollTimer);
-            if (currentWs) currentWs.close();
-            updateAuthUI();
+            clearSession();
+            document.getElementById("current-chat-title").innerText = "왼쪽에서 팀 채팅방을 선택해 주세요";
+            document.getElementById("chat-members-count").innerText = "수락된 모든 팀원과 실시간으로 대화할 수 있습니다.";
+            document.getElementById("chat-box").innerHTML = `<div class="text-slate-400 text-center text-xs py-16">로그인 후 팀 채팅방을 이용할 수 있습니다.</div>`;
+            document.getElementById("chat-member-list").innerHTML = `채팅방을 선택하면 팀원 목록이 표시됩니다.`;
+            document.getElementById("chat-input").setAttribute("disabled", "true");
+            document.getElementById("chat-send-btn").setAttribute("disabled", "true");
             showTab("home");
         };
 
@@ -647,7 +721,7 @@
             }
         }
 
-        // 사진 파일 선택 시 자동 리사이즈 후 Base64 변환
+        // 사진 파일 선택 및 리사이즈
         window.handleImageFileSelect = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -683,7 +757,7 @@
             document.getElementById("proj-image-preview-wrap").classList.add("hidden");
         };
 
-        // DISC 40문항 로드 및 제출
+        // DISC 40문항 진단
         async function loadDiscQuestions() {
             try {
                 const res = await fetch(`${API_BASE}/api/disc/questions`);
@@ -695,7 +769,7 @@
                 container.innerHTML = discQuestions.map((q, idx) => `
                     <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-indigo-200 transition">
                         <div class="text-sm font-semibold text-slate-800">
-                            <span class="text-indigo-600 font-extrabold mr-1.5">Q${idx + 1}.</span>${q.question}
+                            <span class="text-indigo-600 font-extrabold mr-1.5">Q${idx + 1}.</span>${escapeHtml(q.question)}
                         </div>
                         <div class="flex items-center space-x-1.5 shrink-0">
                             ${[1, 2, 3, 4, 5].map(score => `
@@ -707,9 +781,7 @@
                         </div>
                     </div>
                 `).join("");
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) {}
         }
 
         window.updateDiscProgress = function() {
@@ -740,25 +812,32 @@
             const answers = {};
             for (const q of discQuestions) {
                 const checked = document.querySelector(`input[name="q_${q.id}"]:checked`);
-                if (!checked) return alert("모든 문항에 점수를 선택해 주세요! (상단의 '테스트용 자동 응답 채우기' 버튼으로도 빠르게 테스트할 수 있습니다.)");
+                if (!checked) return alert("모든 문항에 점수를 선택해 주세요!");
                 answers[String(q.id)] = parseInt(checked.value);
             }
 
-            const res = await fetch(`${API_BASE}/api/disc/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ answers })
-            });
-            const data = await res.json();
-            if (!res.ok) return alert(data.detail || "제출 실패");
+            try {
+                const res = await apiFetch(`${API_BASE}/api/disc/submit`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ answers })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || "제출 실패");
 
-            const card = document.getElementById("disc-result-card");
-            card.classList.remove("hidden");
-            document.getElementById("res-primary-type").innerText = `${data.disc_type}형`;
-            ["D", "I", "S", "C"].forEach(t => {
-                document.getElementById(`res-score-${t}`).innerText = `${data.disc_scores[t]}점`;
-            });
-            card.scrollIntoView({ behavior: "smooth" });
+                const card = document.getElementById("disc-result-card");
+                card.classList.remove("hidden");
+                document.getElementById("res-primary-type").innerText = `${data.disc_type}형`;
+                ["D", "I", "S", "C"].forEach(t => {
+                    document.getElementById(`res-score-${t}`).innerText = `${data.disc_scores[t]}점`;
+                });
+                card.scrollIntoView({ behavior: "smooth" });
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                }
+            }
         };
 
         // 마이페이지 로드 및 저장
@@ -774,9 +853,7 @@
             }
 
             try {
-                const res = await fetch(`${API_BASE}/api/users/me`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const res = await apiFetch(`${API_BASE}/api/users/me`);
                 if (!res.ok) {
                     warn.classList.remove("hidden");
                     cont.classList.add("hidden");
@@ -818,7 +895,8 @@
                     cb.checked = roles.includes(cb.value);
                 });
             } catch (e) {
-                console.error(e);
+                warn.classList.remove("hidden");
+                cont.classList.add("hidden");
             }
         }
 
@@ -826,9 +904,8 @@
             const token = localStorage.getItem("access_token");
             if (!token) return;
             try {
-                const res = await fetch(`${API_BASE}/api/my-applications`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const res = await apiFetch(`${API_BASE}/api/my-applications`);
+                if (!res.ok) return;
                 const list = await res.json();
                 const el = document.getElementById("my-applied-list");
                 if (!list.length) {
@@ -838,12 +915,13 @@
                 const badgeMap = {
                     pending: `<span class="bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded">대기중</span>`,
                     accepted: `<span class="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded">수락됨 (채팅방 오픈)</span>`,
-                    rejected: `<span class="bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded">거절됨</span>`
+                    rejected: `<span class="bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded">거절됨</span>`,
+                    kicked: `<span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">강퇴됨</span>`
                 };
                 el.innerHTML = list.map(a => `
                     <div class="p-2.5 rounded-xl bg-slate-50 border flex justify-between items-center">
-                        <span class="font-bold text-slate-800 truncate pr-2">${a.project_title}</span>
-                        ${badgeMap[a.status] || a.status}
+                        <span class="font-bold text-slate-800 truncate pr-2">${escapeHtml(a.project_title)}</span>
+                        ${badgeMap[a.status] || escapeHtml(a.status)}
                     </div>
                 `).join("");
             } catch (e) {}
@@ -869,21 +947,28 @@
                 preferred_roles
             };
 
-            const res = await fetch(`${API_BASE}/api/users/me`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (res.ok) {
-                if (payload.name) {
-                    localStorage.setItem("user_name", payload.name);
-                    updateAuthUI();
+            try {
+                const res = await apiFetch(`${API_BASE}/api/users/me`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (payload.name) {
+                        localStorage.setItem("user_name", payload.name);
+                        updateAuthUI();
+                    }
+                    alert("프로필과 활동 가능 시간이 저장되었습니다!");
+                    loadMyProfile();
+                } else {
+                    alert(data.detail || "저장 실패");
                 }
-                alert("프로필과 활동 가능 시간이 저장되었습니다!");
-                loadMyProfile();
-            } else {
-                alert(data.detail || "저장 실패");
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                }
             }
         };
 
@@ -917,21 +1002,28 @@
                 image_url: finalImage
             };
 
-            const res = await fetch(`${API_BASE}/api/projects`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (res.ok) {
-                alert(data.message);
-                document.getElementById("proj-title").value = "";
-                document.getElementById("proj-desc").value = "";
-                clearSelectedImage();
-                toggleProjectForm();
-                loadProjects();
-            } else {
-                alert(data.detail || "등록 실패");
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    document.getElementById("proj-title").value = "";
+                    document.getElementById("proj-desc").value = "";
+                    clearSelectedImage();
+                    toggleProjectForm();
+                    loadProjects();
+                } else {
+                    alert(data.detail || "등록 실패");
+                }
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                }
             }
         };
 
@@ -957,28 +1049,31 @@
             listEl.innerHTML = filtered.map(p => `
                 <div class="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between">
                     <div>
-                        ${p.image_url ? `<img src="${p.image_url}" class="w-full h-52 object-cover border-b" alt="포스터">` : ''}
+                        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" class="w-full h-52 object-cover border-b" alt="포스터">` : ''}
                         <div class="p-6 space-y-3">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-extrabold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">${p.category} · ${p.meeting_type}</span>
+                                <span class="text-xs font-extrabold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">${escapeHtml(p.category)} · ${escapeHtml(p.meeting_type)}</span>
                                 <span class="text-xs font-semibold text-slate-400">👥 현재 팀원 ${p.member_count || 1}명</span>
                             </div>
-                            <h4 class="font-extrabold text-lg text-slate-900 leading-snug">${p.title}</h4>
-                            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">${p.description}</p>
+                            <h4 class="font-extrabold text-lg text-slate-900 leading-snug">${escapeHtml(p.title)}</h4>
+                            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">${escapeHtml(p.description)}</p>
                             <div class="flex flex-wrap gap-1.5 text-xs pt-1">
-                                <span class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg">필요역할: ${(p.needed_roles || []).join(", ") || "무관"}</span>
-                                <span class="bg-violet-50 text-violet-700 font-bold px-2.5 py-1 rounded-lg">선호성향: ${(p.needed_disc || []).join(", ") || "무관"}</span>
+                                <span class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg">필요역할: ${escapeHtml((p.needed_roles || []).join(", ") || "무관")}</span>
+                                <span class="bg-violet-50 text-violet-700 font-bold px-2.5 py-1 rounded-lg">선호성향: ${escapeHtml((p.needed_disc || []).join(", ") || "무관")}</span>
                             </div>
-                            <div class="text-xs text-slate-400 pt-1">작성자: <b class="text-slate-600">${p.author_name || p.author_email}</b> (${p.created_at})</div>
+                            <div class="text-xs text-slate-400 pt-1">작성자: <b class="text-slate-600">${escapeHtml(p.author_name || p.author_email)}</b> (${escapeHtml(p.created_at)})</div>
                         </div>
                     </div>
 
                     <div class="px-6 pb-5 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
                         ${p.author_email === myEmail ? `
-                            <button onclick="openApplicantsModal(${p.id})" class="flex-1 bg-amber-500 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold hover:bg-amber-600 transition">
-                                지원자 관리 (대기 ${p.pending_count || 0}명)
+                            <button onclick="openApplicantsModal(${p.id})" class="flex-1 bg-amber-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold hover:bg-amber-600 transition">
+                                지원자 (${p.pending_count || 0})
                             </button>
-                            <button onclick="recommendForProject(${p.id})" class="bg-indigo-50 text-indigo-700 px-3.5 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition">AI 팀원추천</button>
+                            <button onclick="openMembersModal(${p.id})" class="bg-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-extrabold hover:bg-slate-900 transition">
+                                팀원 관리/강퇴
+                            </button>
+                            <button onclick="recommendForProject(${p.id})" class="bg-indigo-50 text-indigo-700 px-3 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition">AI추천</button>
                             <button onclick="deleteProject(${p.id})" class="bg-rose-50 text-rose-600 px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-rose-100 transition">삭제</button>
                         ` : `
                             <button onclick="applyProject(${p.id})" class="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold hover:bg-indigo-700 transition shadow-xs">
@@ -993,12 +1088,10 @@
 
         window.deleteProject = async function(projectId) {
             if (!confirm("정말 이 모집글을 삭제하시겠습니까?")) return;
-            const token = localStorage.getItem("access_token");
-            const res = await fetch(`${API_BASE}/api/projects/${projectId}`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (res.ok) loadProjects();
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${projectId}`, { method: "DELETE" });
+                if (res.ok) loadProjects();
+            } catch (e) {}
         };
 
         window.applyProject = async function(projectId) {
@@ -1007,69 +1100,132 @@
             const msg = prompt("지원 한마디(자기소개 및 희망 역할)를 입력해 주세요:", "안녕하세요! 성실히 참여하고 싶습니다.");
             if (msg === null) return;
 
-            const res = await fetch(`${API_BASE}/api/projects/${projectId}/apply`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ message: msg })
-            });
-            const data = await res.json();
-            alert(data.message || data.detail);
-            loadProjects();
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${projectId}/apply`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                alert(data.message || data.detail);
+                loadProjects();
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                }
+            }
         };
 
-        // 지원자 관리 모달 (수락/거절 시 즉시 DOM 제거 및 카운트 반영)
+        // 지원자 관리 모달
         window.openApplicantsModal = async function(projectId) {
-            const token = localStorage.getItem("access_token");
-            const res = await fetch(`${API_BASE}/api/projects/${projectId}/applications`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const apps = await res.json();
-            const listEl = document.getElementById("applicants-list");
-            document.getElementById("applicants-modal").classList.remove("hidden");
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${projectId}/applications`);
+                const apps = await res.json();
+                const listEl = document.getElementById("applicants-list");
+                document.getElementById("applicants-modal").classList.remove("hidden");
 
-            if (!apps.length) {
-                listEl.innerHTML = `<p class="text-sm text-slate-400 py-6 text-center">현재 대기 중인 지원자가 없습니다.</p>`;
-                return;
-            }
+                if (!apps.length) {
+                    listEl.innerHTML = `<p class="text-sm text-slate-400 py-6 text-center">현재 대기 중인 지원자가 없습니다.</p>`;
+                    return;
+                }
 
-            listEl.innerHTML = apps.map(app => `
-                <div id="app-row-${app.id}" class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-extrabold text-sm text-slate-900">${app.applicant_name}</span>
-                            <span class="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded">${app.disc_type ? app.disc_type + '형' : 'DISC 미진단'}</span>
-                            <span class="text-xs text-slate-500">${app.major || '전공 미입력'}</span>
+                listEl.innerHTML = apps.map(app => `
+                    <div id="app-row-${app.id}" class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-extrabold text-sm text-slate-900">${escapeHtml(app.applicant_name)}</span>
+                                <span class="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded">${app.disc_type ? escapeHtml(app.disc_type) + '형' : 'DISC 미진단'}</span>
+                                <span class="text-xs text-slate-500">${escapeHtml(app.major || '전공 미입력')}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded-lg border">"${escapeHtml(app.message || '열심히 참여하겠습니다!')}"</p>
+                            <p class="text-[11px] text-slate-400">⏰ 활동 가능: ${escapeHtml(app.available_time_start || '09:00')} ~ ${escapeHtml(app.available_time_end || '18:00')} | 역할: ${escapeHtml((app.preferred_roles || []).join(', ') || '-')}</p>
                         </div>
-                        <p class="text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded-lg border">"${app.message || '열심히 참여하겠습니다!'}"</p>
-                        <p class="text-[11px] text-slate-400">⏰ 활동 가능: ${app.available_time_start || '09:00'} ~ ${app.available_time_end || '18:00'} | 역할: ${(app.preferred_roles || []).join(', ') || '-'}</p>
+                        <div class="flex gap-1.5 shrink-0">
+                            <button onclick="handleApplication(${app.id}, 'accept')" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-emerald-700">수락</button>
+                            <button onclick="handleApplication(${app.id}, 'reject')" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-rose-600">거절</button>
+                        </div>
                     </div>
-                    <div class="flex gap-1.5 shrink-0">
-                        <button onclick="handleApplication(${app.id}, 'accept')" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-emerald-700">수락</button>
-                        <button onclick="handleApplication(${app.id}, 'reject')" class="bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold hover:bg-rose-600">거절</button>
-                    </div>
-                </div>
-            `).join("");
+                `).join("");
+            } catch (e) {}
         };
 
         window.handleApplication = async function(appId, action) {
-            const token = localStorage.getItem("access_token");
-            const res = await fetch(`${API_BASE}/api/applications/${appId}/action`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify({ action })
-            });
-            const data = await res.json();
-            if (!res.ok) return alert(data.detail || "처리 실패");
+            try {
+                const res = await apiFetch(`${API_BASE}/api/applications/${appId}/action`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || "처리 실패");
 
-            const row = document.getElementById(`app-row-${appId}`);
-            if (row) row.remove();
+                const row = document.getElementById(`app-row-${appId}`);
+                if (row) row.remove();
 
-            const listEl = document.getElementById("applicants-list");
-            if (listEl && listEl.children.length === 0) {
-                listEl.innerHTML = `<p class="text-sm text-slate-400 py-6 text-center">모든 지원자 처리를 완료했습니다!</p>`;
+                const listEl = document.getElementById("applicants-list");
+                if (listEl && listEl.children.length === 0) {
+                    listEl.innerHTML = `<p class="text-sm text-slate-400 py-6 text-center">모든 지원자 처리를 완료했습니다!</p>`;
+                }
+                alert(data.message);
+                loadProjects();
+            } catch (e) {}
+        };
+
+        // 게시판 팀원 관리 및 강퇴 모달
+        window.openMembersModal = async function(projectId) {
+            document.getElementById("members-modal").classList.remove("hidden");
+            const listEl = document.getElementById("modal-members-list");
+            listEl.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">팀원 목록을 불러오는 중...</p>`;
+            try {
+                const res = await fetch(`${API_BASE}/api/projects/${projectId}/members`);
+                const members = await res.json();
+                const myEmail = localStorage.getItem("user_email");
+                listEl.innerHTML = members.map(m => `
+                    <div class="p-3.5 bg-slate-50 rounded-2xl border flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-extrabold text-sm text-slate-900">${escapeHtml(m.member_name)}</span>
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded ${m.role === '팀장' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}">${escapeHtml(m.role)}</span>
+                                <span class="text-[11px] text-indigo-600 font-bold">${m.disc_type ? escapeHtml(m.disc_type) + '형' : ''}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(m.member_email)} · ⏰ ${escapeHtml(m.available_time_start || '09:00')}~${escapeHtml(m.available_time_end || '18:00')}</p>
+                        </div>
+                        ${m.member_email !== myEmail ? `
+                            <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', true)" class="bg-rose-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl hover:bg-rose-600 transition">강퇴</button>
+                        ` : `<span class="text-[11px] text-slate-400 font-semibold">본인</span>`}
+                    </div>
+                `).join("");
+            } catch (e) {}
+        };
+
+        // 팀원 강퇴 실행 함수 (채팅방 사이드바 & 게시판 모달 공용)
+        window.kickMember = async function(projectId, memberEmail, memberName, fromModal = false) {
+            if (!confirm(`정말 '${memberName}'님을 팀에서 강퇴하시겠습니까?\n강퇴 시 해당 팀원은 즉시 단체 채팅방에서 제외됩니다.`)) return;
+            try {
+                const res = await apiFetch(`${API_BASE}/api/projects/${projectId}/kick`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ member_email: memberEmail })
+                });
+                const data = await res.json();
+                if (!res.ok) return alert(data.detail || "강퇴 실패");
+
+                alert(data.message);
+                loadProjects();
+                if (fromModal) {
+                    openMembersModal(projectId);
+                }
+                if (activeProjectId === projectId) {
+                    loadTeamMembers(projectId);
+                    await fetchNewMessages();
+                }
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                }
             }
-            alert(data.message);
-            loadProjects();
         };
 
         window.recommendForProject = async function(projectId) {
@@ -1088,18 +1244,18 @@
             list.innerHTML = data.recommended_users.map(u => `
                 <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-xs space-y-1.5">
                     <div class="flex justify-between items-center">
-                        <span class="font-extrabold text-slate-900">${u.name} <span class="text-xs font-normal text-slate-500">(${u.major || "전공미입력"})</span></span>
-                        <span class="bg-indigo-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">${u.disc_type || '미진단'} · 매칭 ${u.match_score}점</span>
+                        <span class="font-extrabold text-slate-900">${escapeHtml(u.name)} <span class="text-xs font-normal text-slate-500">(${escapeHtml(u.major || "전공미입력")})</span></span>
+                        <span class="bg-indigo-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">${escapeHtml(u.disc_type || '미진단')} · 매칭 ${u.match_score}점</span>
                     </div>
-                    <div class="text-xs text-indigo-700 font-bold">${u.match_reasons.join(" · ")}</div>
-                    <div class="text-xs text-slate-500">⏰ 활동시간: ${u.available_time_start || '09:00'} ~ ${u.available_time_end || '18:00'} | 희망역할: ${(u.preferred_roles || []).join(", ") || "-"}</div>
+                    <div class="text-xs text-indigo-700 font-bold">${escapeHtml(u.match_reasons.join(" · "))}</div>
+                    <div class="text-xs text-slate-500">⏰ 활동시간: ${escapeHtml(u.available_time_start || '09:00')} ~ ${escapeHtml(u.available_time_end || '18:00')} | 희망역할: ${escapeHtml((u.preferred_roles || []).join(", ") || "-")}</div>
                 </div>
             `).join("");
             box.scrollIntoView({ behavior: "smooth" });
         };
 
         // ----------------------------------------------------
-        // 팀 단체 채팅 로직 (DB 폴링 + WebSocket 하이브리드)
+        // 팀 단체 채팅 로직 (DB 실시간 동기화 + 팀원 강퇴 연동)
         // ----------------------------------------------------
         window.loadMyTeams = async function() {
             const token = localStorage.getItem("access_token");
@@ -1109,71 +1265,78 @@
                 return;
             }
             try {
-                const res = await fetch(`${API_BASE}/api/my-teams`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const res = await apiFetch(`${API_BASE}/api/my-teams`);
                 const teams = await res.json();
-                if (!teams.length) {
+                myTeamsCache = Array.isArray(teams) ? teams : [];
+
+                if (!myTeamsCache.length) {
+                    activeProjectId = null;
+                    if (chatPollTimer) clearInterval(chatPollTimer);
                     listEl.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">참여 중인 팀이 없습니다.<br>공모전을 개설하거나 지원 수락을 받아보세요!</p>`;
+                    document.getElementById("chat-member-list").innerHTML = `채팅방을 선택하면 팀원 목록이 표시됩니다.`;
                     return;
                 }
-                listEl.innerHTML = teams.map(t => `
+
+                listEl.innerHTML = myTeamsCache.map(t => `
                     <div onclick="selectTeamChat(${t.id})" class="p-3.5 rounded-2xl border cursor-pointer transition ${activeProjectId === t.id ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 hover:bg-indigo-50/50 border-slate-200'}">
                         <div class="flex justify-between items-center">
-                            <span class="text-[11px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-md">${t.category}</span>
-                            <span class="text-[11px] text-slate-500 font-semibold">${t.role} · 👥 ${t.member_count}명</span>
+                            <span class="text-[11px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-md">${escapeHtml(t.category)}</span>
+                            <span class="text-[11px] text-slate-500 font-semibold">${escapeHtml(t.role)} · 👥 ${t.member_count}명</span>
                         </div>
-                        <h4 class="font-extrabold text-sm text-slate-900 mt-1.5 truncate">${t.title}</h4>
-                        <p class="text-xs text-slate-500 truncate mt-0.5">${t.last_message || ''}</p>
+                        <h4 class="font-extrabold text-sm text-slate-900 mt-1.5 truncate">${escapeHtml(t.title)}</h4>
+                        <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(t.last_message || '')}</p>
                     </div>
                 `).join("");
 
-                if (!activeProjectId && teams.length > 0) {
-                    selectTeamChat(teams[0].id);
+                const stillMember = myTeamsCache.some(t => t.id === activeProjectId);
+                if (!stillMember && myTeamsCache.length > 0) {
+                    selectTeamChat(myTeamsCache[0].id);
                 }
-            } catch (e) {}
+            } catch (e) {
+                if (e.message === "UNAUTHORIZED") {
+                    listEl.innerHTML = `<p class="text-xs text-rose-500 py-4 text-center font-bold">세션이 만료되었습니다. 다시 로그인해 주세요.</p>`;
+                }
+            }
         };
 
         window.selectTeamChat = async function(projectId) {
             activeProjectId = projectId;
             lastMessageId = 0;
 
-            const teamObj = allProjects.find(p => p.id === projectId);
+            const teamObj = myTeamsCache.find(p => p.id === projectId) || allProjects.find(p => p.id === projectId);
             document.getElementById("current-chat-title").innerText = teamObj ? teamObj.title : `팀 채팅방 #${projectId}`;
             document.getElementById("chat-input").removeAttribute("disabled");
             document.getElementById("chat-send-btn").removeAttribute("disabled");
             document.getElementById("chat-box").innerHTML = "";
 
-            loadMyTeams();
             loadTeamMembers(projectId);
             await fetchNewMessages();
 
             if (chatPollTimer) clearInterval(chatPollTimer);
-            chatPollTimer = setInterval(fetchNewMessages, 2000);
-
-            try {
-                if (currentWs) currentWs.close();
-                const userName = localStorage.getItem("user_name") || "팀원";
-                const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-                currentWs = new WebSocket(`${protocol}${location.host}/ws/chat/${projectId}/${encodeURIComponent(userName)}`);
-                currentWs.onmessage = () => fetchNewMessages();
-            } catch (e) {}
+            chatPollTimer = setInterval(fetchNewMessages, 1500);
         };
 
         async function loadTeamMembers(projectId) {
             try {
                 const res = await fetch(`${API_BASE}/api/projects/${projectId}/members`);
                 const members = await res.json();
+                const myEmail = localStorage.getItem("user_email");
+                const isLeader = members.some(m => m.member_email === myEmail && m.role === "팀장");
+
                 document.getElementById("chat-members-count").innerText = `참여 팀원 총 ${members.length}명 (${members.map(m => m.member_name).join(", ")})`;
                 const memEl = document.getElementById("chat-member-list");
                 memEl.innerHTML = members.map(m => `
-                    <div class="p-2.5 bg-slate-50 rounded-xl border flex justify-between items-center">
-                        <div>
-                            <span class="font-extrabold text-slate-800">${m.member_name}</span>
-                            <span class="text-[11px] text-slate-400 ml-1">(${m.role})</span>
-                            <div class="text-[11px] text-slate-500">⏰ ${m.available_time_start || '09:00'}~${m.available_time_end || '18:00'}</div>
+                    <div class="p-2.5 bg-slate-50 rounded-xl border flex justify-between items-center gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1">
+                                <span class="font-extrabold text-slate-800 truncate">${escapeHtml(m.member_name)}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${m.role === '팀장' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}">${escapeHtml(m.role)}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 mt-0.5">⏰ ${escapeHtml(m.available_time_start || '09:00')}~${escapeHtml(m.available_time_end || '18:00')} · ${m.disc_type ? escapeHtml(m.disc_type) + '형' : '미진단'}</div>
                         </div>
-                        <span class="bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded text-[11px]">${m.disc_type ? m.disc_type + '형' : '미진단'}</span>
+                        ${isLeader && m.member_email !== myEmail ? `
+                            <button onclick="kickMember(${projectId}, '${escapeHtml(m.member_email)}', '${escapeHtml(m.member_name)}', false)" class="shrink-0 bg-rose-500 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] hover:bg-rose-600 transition">강퇴</button>
+                        ` : ``}
                     </div>
                 `).join("");
             } catch (e) {}
@@ -1187,12 +1350,25 @@
                 const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/messages?after_id=${lastMessageId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
+                if (res.status === 403) {
+                    clearInterval(chatPollTimer);
+                    activeProjectId = null;
+                    alert("팀에서 제외되어 채팅방 접근 권한이 없습니다.");
+                    loadMyTeams();
+                    return;
+                }
+                if (res.status === 401) {
+                    clearSession();
+                    return;
+                }
                 if (!res.ok) return;
+
                 const msgs = await res.json();
                 if (!msgs.length) return;
 
                 const box = document.getElementById("chat-box");
                 const myEmail = localStorage.getItem("user_email");
+                let hasSystemChange = false;
 
                 msgs.forEach(m => {
                     if (m.id <= lastMessageId) return;
@@ -1200,25 +1376,30 @@
 
                     const wrap = document.createElement("div");
                     if (m.sender_email === "system") {
+                        hasSystemChange = true;
                         wrap.className = "text-center my-2";
-                        wrap.innerHTML = `<span class="inline-block bg-slate-200/80 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">${m.message}</span>`;
+                        wrap.innerHTML = `<span class="inline-block bg-slate-200/80 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">${escapeHtml(m.message)}</span>`;
                     } else if (m.sender_email === myEmail) {
                         wrap.className = "flex flex-col items-end";
                         wrap.innerHTML = `
-                            <div class="max-w-[75%] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-xs text-sm shadow-xs break-words">${m.message}</div>
-                            <span class="text-[10px] text-slate-400 mt-1">${m.created_at}</span>
+                            <div class="max-w-[75%] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-xs text-sm shadow-xs break-words">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-1">${escapeHtml(m.created_at)}</span>
                         `;
                     } else {
                         wrap.className = "flex flex-col items-start";
                         wrap.innerHTML = `
-                            <span class="text-xs font-bold text-slate-600 mb-1 ml-1">${m.sender_name}</span>
-                            <div class="max-w-[75%] bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-2xl rounded-tl-xs text-sm shadow-2xs break-words">${m.message}</div>
-                            <span class="text-[10px] text-slate-400 mt-1 ml-1">${m.created_at}</span>
+                            <span class="text-xs font-bold text-slate-600 mb-1 ml-1">${escapeHtml(m.sender_name)}</span>
+                            <div class="max-w-[75%] bg-white border border-slate-200 text-slate-800 px-4 py-2.5 rounded-2xl rounded-tl-xs text-sm shadow-2xs break-words">${escapeHtml(m.message)}</div>
+                            <span class="text-[10px] text-slate-400 mt-1 ml-1">${escapeHtml(m.created_at)}</span>
                         `;
                     }
                     box.appendChild(wrap);
                 });
                 box.scrollTop = box.scrollHeight;
+
+                if (hasSystemChange && activeProjectId) {
+                    loadTeamMembers(activeProjectId);
+                }
             } catch (e) {}
         }
 
@@ -1228,12 +1409,11 @@
             const text = input.value.trim();
             if (!text) return;
 
-            const token = localStorage.getItem("access_token");
             input.value = "";
             try {
-                const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/messages`, {
+                const res = await apiFetch(`${API_BASE}/api/projects/${activeProjectId}/messages`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: text })
                 });
                 if (res.ok) {
@@ -1243,7 +1423,12 @@
                     alert(err.detail || "전송 실패");
                 }
             } catch (e) {
-                alert("메시지 전송 중 오류가 발생했습니다.");
+                if (e.message === "UNAUTHORIZED") {
+                    alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+                    openAuthModal("login");
+                } else {
+                    alert("메시지 전송 중 오류가 발생했습니다.");
+                }
             }
         };
     </script>
