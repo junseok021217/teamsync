@@ -374,7 +374,7 @@
             document.getElementById("auth-modal").classList.add("hidden");
         }
 
-        // 회원가입 & 로그인 API 호출
+// 회원가입 & 로그인 API 호출
         async function submitAuth() {
             const email = document.getElementById("auth-email").value.trim();
             const password = document.getElementById("auth-password").value.trim();
@@ -392,7 +392,9 @@
                 });
                 const data = await res.json();
                 if (!res.ok) return alert(data.detail || "회원가입 실패");
-                alert("회원가입 완료! 이제 로그인해 주세요.");
+                
+                // ✅ 수정된 부분: 객체 전체가 아니라 서버가 보낸 message 텍스트를 출력합니다.
+                alert(data.message || "회원가입 완료! 이제 로그인해 주세요.");
                 openAuthModal("login");
             } else {
                 const res = await fetch(`${API_BASE}/api/auth/login`, {
