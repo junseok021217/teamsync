@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import jwt
 
-app = FastAPI(title="TeamSync 실전 API", description="DISC 기반 공모전/팀플 매칭 및 실시간 채팅 백엔드")
+app = FastAPI(title="TeamSync 실전 API", description="DISC 기반 공모전/팀플 매칭 및 단체 채팅 백엔드")
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,7 +47,9 @@ def init_db():
         disc_scores TEXT,
         can_present BOOLEAN DEFAULT 1,
         preferred_roles TEXT,
-        is_seeking BOOLEAN DEFAULT 1
+        is_seeking BOOLEAN DEFAULT 1,
+        available_time_start TEXT DEFAULT '09:00',
+        available_time_end TEXT DEFAULT '18:00'
     )
     """)
     cur.execute("""
@@ -62,7 +64,25 @@ def init_db():
         needed_disc TEXT NOT NULL,
         commitment_level TEXT,
         available_time TEXT,
+        image_url TEXT,
         created_at TEXT NOT NULL
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS project_applications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        applicant_email TEXT NOT NULL,
+        applicant_name TEXT NOT NULL,
+        status TEXT DEFAULT 'pending'
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS project_members (
+        project_id INTEGER NOT NULL,
+        member_email TEXT NOT NULL,
+        member_name TEXT NOT NULL,
+        PRIMARY KEY (project_id, member_email)
     )
     """)
     conn.commit()
@@ -70,9 +90,6 @@ def init_db():
 
 init_db()
 
-# ----------------------------------------------------
-# Pydantic 모델 정의
-# ----------------------------------------------------
 class UserSignUp(BaseModel):
     email: EmailStr
     password: str
@@ -96,6 +113,8 @@ class ProfileUpdate(BaseModel):
     can_present: Optional[bool] = None
     preferred_roles: Optional[List[str]] = None
     is_seeking: Optional[bool] = None
+    available_time_start: Optional[str] = None
+    available_time_end: Optional[str] = None
 
 class DiscSubmit(BaseModel):
     answers: Dict[str, int]
@@ -109,25 +128,13 @@ class ProjectCreate(BaseModel):
     needed_disc: List[str]
     commitment_level: str
     available_time: str
+    image_url: Optional[str] = ""
 
-class FriendRequest(BaseModel):
-    user_id: str
-    target_id: str
-
-class FriendAction(BaseModel):
-    request_id: int
-
-# ----------------------------------------------------
-# 유틸리티 및 인증 함수
-# ----------------------------------------------------
 def hash_pw(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def create_token(email: str) -> str:
-    payload = {
-        "sub": email,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-    }
+    payload = {"sub": email, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)}
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 def get_current_user(authorization: str = Header(..., description="Bearer <토큰>")):
@@ -143,14 +150,9 @@ def get_current_user(authorization: str = Header(..., description="Bearer <토�
         if not user:
             raise HTTPException(status_code=401, detail="존재하지 않는 사용자입니다.")
         return dict(user)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="토큰이 만료되었습니다.")
-    except jwt.InvalidTokenError:
+    except Exception:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
 
-# ----------------------------------------------------
-# 프론트엔드 HTML 서빙
-# ----------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def serve_frontend():
     if os.path.exists("index.html"):
@@ -158,22 +160,14 @@ def serve_frontend():
             return f.read()
     return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
 
-# ----------------------------------------------------
-# 회원가입 / 로그인 / 프로필 API
-# ----------------------------------------------------
-@app.post("/api/auth/signup", summary="회원가입")
+@app.post("/api/auth/signup")
 def signup(data: UserSignUp):
     conn = get_db()
     try:
         conn.execute(
             """INSERT INTO users (email, password_hash, name, age, major, education, disc_scores, preferred_roles)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                data.email, hash_pw(data.password), data.name, data.age,
-                data.major, data.education,
-                json.dumps({"D": 0, "I": 0, "S": 0, "C": 0}),
-                json.dumps([])
-            )
+            (data.email, hash_pw(data.password), data.name, data.age, data.major, data.education, json.dumps({"D": 0, "I": 0, "S": 0, "C": 0}), json.dumps([]))
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -182,7 +176,7 @@ def signup(data: UserSignUp):
         conn.close()
     return {"message": f"{data.name}님, 회원가입이 완료되었습니다."}
 
-@app.post("/api/auth/login", summary="로그인")
+@app.post("/api/auth/login")
 def login(data: UserLogin):
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE email = ?", (data.email,)).fetchone()
@@ -190,16 +184,16 @@ def login(data: UserLogin):
     if not user or user["password_hash"] != hash_pw(data.password):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 일치하지 않습니다.")
     token = create_token(data.email)
-    return {"access_token": token, "token_type": "bearer", "name": user["name"]}
+    return {"access_token": token, "token_type": "bearer", "name": user["name"], "email": user["email"]}
 
-@app.get("/api/users/me", summary="마이페이지 조회")
+@app.get("/api/users/me")
 def read_my_profile(current_user: dict = Depends(get_current_user)):
     current_user.pop("password_hash", None)
     current_user["disc_scores"] = json.loads(current_user["disc_scores"] or "{}")
     current_user["preferred_roles"] = json.loads(current_user["preferred_roles"] or "[]")
     return current_user
 
-@app.put("/api/users/me", summary="프로필 수정")
+@app.put("/api/users/me")
 def update_my_profile(update: ProfileUpdate, current_user: dict = Depends(get_current_user)):
     fields = update.dict(exclude_unset=True)
     if not fields:
@@ -214,10 +208,7 @@ def update_my_profile(update: ProfileUpdate, current_user: dict = Depends(get_cu
     conn.close()
     return {"message": "프로필이 수정되었습니다."}
 
-# ----------------------------------------------------
-# DISC 검사 API
-# ----------------------------------------------------
-@app.get("/api/disc/questions", summary="DISC 40문항 불러오기")
+@app.get("/api/disc/questions")
 def get_disc_questions():
     try:
         with open("disc_items.json", "r", encoding="utf-8") as f:
@@ -231,14 +222,17 @@ def get_disc_questions():
             selected = items[:40]
         return {"total": len(selected), "questions": selected}
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="disc_items.json 파일이 없습니다.")
+        return {"questions": []}
 
-@app.post("/api/disc/submit", summary="DISC 검사 제출")
+@app.post("/api/disc/submit")
 def submit_disc(payload: DiscSubmit, current_user: dict = Depends(get_current_user)):
-    with open("disc_items.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-    items = data if isinstance(data, list) else data.get("items", [])
-    items_map = {item["id"]: item for item in items if isinstance(item, dict) and "id" in item}
+    try:
+        with open("disc_items.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        items = data if isinstance(data, list) else data.get("items", [])
+        items_map = {item["id"]: item for item in items if isinstance(item, dict) and "id" in item}
+    except Exception:
+        items_map = {}
 
     scores = {"D": 0, "I": 0, "S": 0, "C": 0}
     for q_id, raw_val in payload.answers.items():
@@ -247,6 +241,8 @@ def submit_disc(payload: DiscSubmit, current_user: dict = Depends(get_current_us
             score = raw_val if item.get("keyed", 1) == 1 else (6 - raw_val)
             if item.get("style") in scores:
                 scores[item["style"]] += score
+        else:
+            scores["C"] += raw_val
 
     primary_type = max(scores, key=scores.get)
     conn = get_db()
@@ -258,13 +254,10 @@ def submit_disc(payload: DiscSubmit, current_user: dict = Depends(get_current_us
     conn.close()
     return {"message": "반영되었습니다.", "disc_type": primary_type, "disc_scores": scores}
 
-# ----------------------------------------------------
-# 공모전 및 팀원 매칭 API
-# ----------------------------------------------------
-@app.get("/api/projects", summary="모집글 목록 조회")
+@app.get("/api/projects")
 def get_projects():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM projects ORDER BY id DESC").fetchall()
+    rows = conn.execute("SELECT p.*, u.name as author_name FROM projects p JOIN users u ON p.author_email = u.email ORDER BY p.id DESC").fetchall()
     conn.close()
     projects = []
     for r in rows:
@@ -274,148 +267,139 @@ def get_projects():
         projects.append(p)
     return projects
 
-@app.post("/api/projects", summary="모집글 등록")
+@app.post("/api/projects")
 def create_project(proj: ProjectCreate, current_user: dict = Depends(get_current_user)):
     conn = get_db()
-    conn.execute(
+    cursor = conn.cursor()
+    cursor.execute(
         """INSERT INTO projects 
-           (author_email, category, title, description, meeting_type, needed_roles, needed_disc, commitment_level, available_time, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (author_email, category, title, description, meeting_type, needed_roles, needed_disc, commitment_level, available_time, image_url, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             current_user["email"], proj.category, proj.title, proj.description,
             proj.meeting_type,
             json.dumps(proj.needed_roles, ensure_ascii=False),
             json.dumps(proj.needed_disc, ensure_ascii=False),
-            proj.commitment_level, proj.available_time,
+            proj.commitment_level, proj.available_time, proj.image_url,
             datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         )
     )
+    project_id = cursor.lastrowid
+    cursor.execute("INSERT OR IGNORE INTO project_members (project_id, member_email, member_name) VALUES (?, ?, ?)", 
+                   (project_id, current_user["email"], current_user["name"]))
     conn.commit()
     conn.close()
-    return {"message": "등록되었습니다."}
+    return {"message": "등록되었습니다.", "project_id": project_id}
 
-@app.get("/api/projects/{project_id}/recommend-members", summary="맞춤 팀원 추천")
-def recommend_members(project_id: int):
+@app.post("/api/projects/{project_id}/apply")
+def apply_project(project_id: int, current_user: dict = Depends(get_current_user)):
     conn = get_db()
     proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
     if not proj:
         conn.close()
-        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
-    needed_disc = json.loads(proj["needed_disc"])
-    needed_roles = json.loads(proj["needed_roles"])
+        raise HTTPException(status_code=404, detail="공모전 글을 찾을 수 없습니다.")
+    if proj["author_email"] == current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="본인이 작성한 공모전에는 지원할 수 없습니다.")
+    
+    existing = conn.execute("SELECT * FROM project_applications WHERE project_id = ? AND applicant_email = ?", (project_id, current_user["email"])).fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=400, detail="이미 지원한 공모전입니다.")
 
-    candidates = conn.execute(
-        "SELECT email, name, major, disc_type, disc_scores, preferred_roles, can_present, portfolio_url FROM users WHERE is_seeking = 1 AND email != ?",
-        (proj["author_email"],)
-    ).fetchall()
+    conn.execute("INSERT INTO project_applications (project_id, applicant_email, applicant_name, status) VALUES (?, ?, ?, 'pending')",
+                 (project_id, current_user["email"], current_user["name"]))
+    conn.commit()
     conn.close()
+    return {"message": "공모전 지원이 완료되었습니다!"}
 
-    recommendations = []
-    for c in candidates:
-        c_dict = dict(c)
-        c_roles = json.loads(c_dict["preferred_roles"] or "[]")
-        match_score = 0
-        reasons = []
-        if c_dict["disc_type"] in needed_disc:
-            match_score += 50
-            reasons.append(f"성향({c_dict['disc_type']}형) 일치")
-        matched_roles = set(needed_roles) & set(c_roles)
-        if matched_roles:
-            match_score += 30 * len(matched_roles)
-            reasons.append(f"역할 일치({', '.join(matched_roles)})")
-        if match_score > 0:
-            c_dict["preferred_roles"] = c_roles
-            c_dict["disc_scores"] = json.loads(c_dict["disc_scores"] or "{}")
-            c_dict["match_score"] = match_score
-            c_dict["match_reasons"] = reasons
-            recommendations.append(c_dict)
+@app.get("/api/projects/{project_id}/applications")
+def get_project_applications(project_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if not proj or proj["author_email"] != current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    rows = conn.execute("SELECT * FROM project_applications WHERE project_id = ?", (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
-    recommendations.sort(key=lambda x: x["match_score"], reverse=True)
-    return {"project_title": proj["title"], "recommended_users": recommendations}
+@app.post("/api/applications/{app_id}/action")
+def application_action(app_id: int, action_data: dict, current_user: dict = Depends(get_current_user)):
+    action = action_data.get("action")
+    conn = get_db()
+    app_row = conn.execute("SELECT * FROM project_applications WHERE id = ?", (app_id,)).fetchone()
+    if not app_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="지원 내역을 찾을 수 없습니다.")
+    
+    proj = conn.execute("SELECT * FROM projects WHERE id = ?", (app_row["project_id"],)).fetchone()
+    if proj["author_email"] != current_user["email"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
 
-# ----------------------------------------------------
-# 친구 추가 및 실시간 웹소켓 채팅 API
-# ----------------------------------------------------
-friend_requests_db = {}
-friends_db = {}
-request_counter = 1
+    if action == "accept":
+        conn.execute("UPDATE project_applications SET status = 'accepted' WHERE id = ?", (app_id,))
+        conn.execute("INSERT OR IGNORE INTO project_members (project_id, member_email, member_name) VALUES (?, ?, ?)",
+                     (app_row["project_id"], app_row["applicant_email"], app_row["applicant_name"]))
+        conn.commit()
+        conn.close()
+        return {"message": "지원을 수락하였습니다. 팀원 채팅방에 참여됩니다."}
+    elif action == "reject":
+        conn.execute("UPDATE project_applications SET status = 'rejected' WHERE id = ?", (app_id,))
+        conn.commit()
+        conn.close()
+        return {"message": "지원을 거절하였습니다."}
+    else:
+        conn.close()
+        raise HTTPException(status_code=400, detail="잘못된 요청입니다.")
 
-# ----------------------------------------------------
-# 친구 추가 및 실시간 웹소켓 채팅 API
-# ----------------------------------------------------
-friend_requests_db = {}
-friends_db = {}
-request_counter = 1
+@app.get("/api/my-teams")
+def get_my_teams(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT p.id, p.title, p.category FROM project_members pm
+        JOIN projects p ON pm.project_id = p.id
+        WHERE pm.member_email = ?
+    """, (current_user["email"],)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.get("/api/projects/{project_id}/members")
+def get_project_members(project_id: int):
+    conn = get_db()
+    rows = conn.execute("SELECT member_name, member_email FROM project_members WHERE project_id = ?", (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.rooms: Dict[int, List[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, project_id: int):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if project_id not in self.rooms:
+            self.rooms[project_id] = []
+        self.rooms[project_id].append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, project_id: int):
+        if project_id in self.rooms:
+            if websocket in self.rooms[project_id]:
+                self.rooms[project_id].remove(websocket)
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+    async def broadcast_to_room(self, project_id: int, message: str):
+        if project_id in self.rooms:
+            for connection in self.rooms[project_id]:
+                await connection.send_text(message)
 
 manager = ConnectionManager()
 
-@app.post("/api/friends/request", summary="친구 신청")
-def send_friend_request(data: FriendRequest):
-    global request_counter
-    if data.user_id == data.target_id:
-        return {"error": "자기 자신에게는 친구 신청을 할 수 없습니다."}
-    
-    for req in friend_requests_db.values():
-        if req["user_id"] == data.user_id and req["target_id"] == data.target_id:
-            return {"status": "already_sent", "message": "이미 친구 신청을 보냈습니다."}
-
-    friend_requests_db[request_counter] = {
-        "id": request_counter,
-        "user_id": data.user_id,
-        "target_id": data.target_id,
-        "status": "pending"
-    }
-    request_counter += 1
-    return {"status": "success", "message": "친구 신청을 전송했습니다."}
-
-@app.get("/api/friends/requests/{user_id}", summary="받은 친구 신청 목록")
-def get_friend_requests(user_id: str):
-    incoming = [req for req in friend_requests_db.values() if req["target_id"] == user_id and req["status"] == "pending"]
-    return {"incoming_requests": incoming}
-
-@app.post("/api/friends/accept", summary="친구 신청 수락")
-def accept_friend_request(data: FriendAction):
-    req = friend_requests_db.get(data.request_id)
-    if not req:
-        return {"error": "존재하지 않는 신청입니다."}
-    
-    req["status"] = "accepted"
-    u1, u2 = req["user_id"], req["target_id"]
-
-    if u1 not in friends_db: friends_db[u1] = []
-    if u2 not in friends_db: friends_db[u2] = []
-    
-    if u2 not in friends_db[u1]: friends_db[u1].append(u2)
-    if u1 not in friends_db[u2]: friends_db[u2].append(u1)
-
-    return {"status": "success", "message": "친구 신청을 수락했습니다."}
-
-@app.get("/api/friends/list/{user_id}", summary="친구 목록 조회")
-def get_friends_list(user_id: str):
-    user_friends = friends_db.get(user_id, [])
-    return {"friends": user_friends}
-
-@app.websocket("/ws/chat/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    await manager.connect(websocket)
+@app.websocket("/ws/chat/{project_id}/{user_name}")
+async def websocket_chat_endpoint(websocket: WebSocket, project_id: int, user_name: str):
+    await manager.connect(websocket, project_id)
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(f"{user_id}: {data}")
+            await manager.broadcast_to_room(project_id, f"[{user_name}]: {data}")
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, project_id)
