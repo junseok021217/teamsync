@@ -2,3 +2,4 @@ fastapi
 uvicorn
 PyJWT
 email-validator
+psycopg2-binary
