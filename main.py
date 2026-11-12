@@ -10,6 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import jwt
 
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+
 app = FastAPI(title="TeamSync API", description="DISC 기반 공모전 & 전국 대학교 수업 팀플 매칭 플랫폼")
 
 app.add_middleware(
@@ -20,128 +26,316 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SECRET_KEY = "teamsync-secret-key-change-in-prod"
+SECRET_KEY = os.environ.get("SECRET_KEY", "teamsync-secret-key-change-in-prod")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_PATH = "teamsync.db"
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+USE_POSTGRES = bool(DATABASE_URL and psycopg2 is not None)
 
-def ensure_column(cur, table: str, column: str, col_type: str):
+# ----------------------------------------------------
+# PostgreSQL & SQLite 통합 DB 어댑터
+# ----------------------------------------------------
+class UnifiedCursor:
+    def __init__(self, cur, is_pg: bool):
+        self.cur = cur
+        self.is_pg = is_pg
+        self.lastrowid = None
+
+    def _adapt_sql(self, sql: str) -> str:
+        if not self.is_pg:
+            return sql
+        adapted = sql.replace("?", "%s")
+        adapted = adapted.replace("INSERT OR IGNORE INTO", "INSERT INTO")
+        if "INSERT INTO" in adapted and "ON CONFLICT" not in adapted and "project_members" in adapted:
+            adapted = adapted.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
+        return adapted
+
+    def execute(self, sql: str, params=()):
+        adapted = self._adapt_sql(sql)
+        if self.is_pg and adapted.lstrip().upper().startswith("INSERT INTO") and "RETURNING" not in adapted.upper() and "ON CONFLICT" not in adapted.upper():
+            adapted_ret = adapted.rstrip().rstrip(";") + " RETURNING id"
+            try:
+                self.cur.execute(adapted_ret, params)
+                row = self.cur.fetchone()
+                if row:
+                    self.lastrowid = row["id"] if isinstance(row, dict) else row[0]
+                return self
+            except Exception:
+                self.cur.connection.rollback()
+                self.cur.execute(adapted, params)
+                return self
+        self.cur.execute(adapted, params)
+        if not self.is_pg:
+            self.lastrowid = self.cur.lastrowid
+        return self
+
+    def fetchone(self):
+        return self.cur.fetchone()
+
+    def fetchall(self):
+        return self.cur.fetchall()
+
+
+class UnifiedConnection:
+    def __init__(self):
+        self.is_pg = USE_POSTGRES
+        if self.is_pg:
+            db_url = DATABASE_URL
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            self.conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+        else:
+            self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+            self.conn.row_factory = sqlite3.Row
+
+    def cursor(self):
+        return UnifiedCursor(self.conn.cursor(), self.is_pg)
+
+    def execute(self, sql: str, params=()):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+def get_db():
+    return UnifiedConnection()
+
+
+def ensure_column_sqlite(cur, table: str, column: str, col_type: str):
     cur.execute(f"PRAGMA table_info({table})")
     cols = [row[1] for row in cur.fetchall()]
     if column not in cols:
         cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
 
+
+def ensure_column_pg(cur, table: str, column: str, col_type: str):
+    cur.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {col_type}")
+
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        name TEXT NOT NULL,
-        age INTEGER,
-        major TEXT,
-        education TEXT,
-        certifications TEXT,
-        awards TEXT,
-        portfolio_url TEXT,
-        disc_type TEXT,
-        disc_scores TEXT,
-        can_present BOOLEAN DEFAULT 1,
-        preferred_roles TEXT,
-        is_seeking BOOLEAN DEFAULT 1,
-        available_time_start TEXT DEFAULT '09:00',
-        available_time_end TEXT DEFAULT '18:00'
-    )
-    """)
-    ensure_column(cur, "users", "available_time_start", "TEXT DEFAULT '09:00'")
-    ensure_column(cur, "users", "available_time_end", "TEXT DEFAULT '18:00'")
+    if conn.is_pg:
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            age INTEGER,
+            major TEXT,
+            education TEXT,
+            certifications TEXT,
+            awards TEXT,
+            portfolio_url TEXT,
+            disc_type TEXT,
+            disc_scores TEXT,
+            can_present INTEGER DEFAULT 1,
+            preferred_roles TEXT,
+            is_seeking INTEGER DEFAULT 1,
+            hide_private_info INTEGER DEFAULT 1,
+            available_time_start TEXT DEFAULT '09:00',
+            available_time_end TEXT DEFAULT '18:00'
+        )
+        """)
+        ensure_column_pg(cur, "users", "available_time_start", "TEXT DEFAULT '09:00'")
+        ensure_column_pg(cur, "users", "available_time_end", "TEXT DEFAULT '18:00'")
+        ensure_column_pg(cur, "users", "hide_private_info", "INTEGER DEFAULT 1")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        author_email TEXT NOT NULL,
-        project_type TEXT DEFAULT 'general',
-        university TEXT DEFAULT '',
-        department TEXT DEFAULT '',
-        course_name TEXT DEFAULT '',
-        professor_name TEXT DEFAULT '',
-        author_role_type TEXT DEFAULT '학생',
-        max_members INTEGER DEFAULT 4,
-        category TEXT NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        meeting_type TEXT NOT NULL,
-        needed_roles TEXT NOT NULL,
-        needed_disc TEXT NOT NULL,
-        commitment_level TEXT,
-        available_time TEXT,
-        image_url TEXT,
-        created_at TEXT NOT NULL
-    )
-    """)
-    ensure_column(cur, "projects", "image_url", "TEXT")
-    ensure_column(cur, "projects", "project_type", "TEXT DEFAULT 'general'")
-    ensure_column(cur, "projects", "university", "TEXT DEFAULT ''")
-    ensure_column(cur, "projects", "department", "TEXT DEFAULT ''")
-    ensure_column(cur, "projects", "course_name", "TEXT DEFAULT ''")
-    ensure_column(cur, "projects", "professor_name", "TEXT DEFAULT ''")
-    ensure_column(cur, "projects", "author_role_type", "TEXT DEFAULT '학생'")
-    ensure_column(cur, "projects", "max_members", "INTEGER DEFAULT 4")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            author_email TEXT NOT NULL,
+            project_type TEXT DEFAULT 'general',
+            university TEXT DEFAULT '',
+            department TEXT DEFAULT '',
+            course_name TEXT DEFAULT '',
+            professor_name TEXT DEFAULT '',
+            author_role_type TEXT DEFAULT '학생',
+            max_members INTEGER DEFAULT 4,
+            category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            meeting_type TEXT NOT NULL,
+            needed_roles TEXT NOT NULL,
+            needed_disc TEXT NOT NULL,
+            commitment_level TEXT,
+            available_time TEXT,
+            image_url TEXT,
+            created_at TEXT NOT NULL
+        )
+        """)
+        ensure_column_pg(cur, "projects", "image_url", "TEXT")
+        ensure_column_pg(cur, "projects", "project_type", "TEXT DEFAULT 'general'")
+        ensure_column_pg(cur, "projects", "university", "TEXT DEFAULT ''")
+        ensure_column_pg(cur, "projects", "department", "TEXT DEFAULT ''")
+        ensure_column_pg(cur, "projects", "course_name", "TEXT DEFAULT ''")
+        ensure_column_pg(cur, "projects", "professor_name", "TEXT DEFAULT ''")
+        ensure_column_pg(cur, "projects", "author_role_type", "TEXT DEFAULT '학생'")
+        ensure_column_pg(cur, "projects", "max_members", "INTEGER DEFAULT 4")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS project_applications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        applicant_email TEXT NOT NULL,
-        applicant_name TEXT NOT NULL,
-        message TEXT DEFAULT '',
-        status TEXT DEFAULT 'pending',
-        created_at TEXT
-    )
-    """)
-    ensure_column(cur, "project_applications", "message", "TEXT DEFAULT ''")
-    ensure_column(cur, "project_applications", "created_at", "TEXT")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_applications (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            applicant_email TEXT NOT NULL,
+            applicant_name TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_at TEXT
+        )
+        """)
+        ensure_column_pg(cur, "project_applications", "message", "TEXT DEFAULT ''")
+        ensure_column_pg(cur, "project_applications", "created_at", "TEXT")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS project_members (
-        project_id INTEGER NOT NULL,
-        member_email TEXT NOT NULL,
-        member_name TEXT NOT NULL,
-        role TEXT DEFAULT '팀원',
-        PRIMARY KEY (project_id, member_email)
-    )
-    """)
-    ensure_column(cur, "project_members", "role", "TEXT DEFAULT '팀원'")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_members (
+            project_id INTEGER NOT NULL,
+            member_email TEXT NOT NULL,
+            member_name TEXT NOT NULL,
+            role TEXT DEFAULT '팀원',
+            PRIMARY KEY (project_id, member_email)
+        )
+        """)
+        ensure_column_pg(cur, "project_members", "role", "TEXT DEFAULT '팀원'")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS chat_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        sender_email TEXT NOT NULL,
-        sender_name TEXT NOT NULL,
-        message TEXT NOT NULL,
-        created_at TEXT NOT NULL
-    )
-    """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            sender_email TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS pre_chat_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        inquirer_email TEXT NOT NULL,
-        inquirer_name TEXT NOT NULL,
-        sender_email TEXT NOT NULL,
-        sender_name TEXT NOT NULL,
-        message TEXT NOT NULL,
-        created_at TEXT NOT NULL
-    )
-    """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS pre_chat_messages (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            inquirer_email TEXT NOT NULL,
+            inquirer_name TEXT NOT NULL,
+            sender_email TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """)
+    else:
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            age INTEGER,
+            major TEXT,
+            education TEXT,
+            certifications TEXT,
+            awards TEXT,
+            portfolio_url TEXT,
+            disc_type TEXT,
+            disc_scores TEXT,
+            can_present BOOLEAN DEFAULT 1,
+            preferred_roles TEXT,
+            is_seeking BOOLEAN DEFAULT 1,
+            hide_private_info BOOLEAN DEFAULT 1,
+            available_time_start TEXT DEFAULT '09:00',
+            available_time_end TEXT DEFAULT '18:00'
+        )
+        """)
+        ensure_column_sqlite(cur, "users", "available_time_start", "TEXT DEFAULT '09:00'")
+        ensure_column_sqlite(cur, "users", "available_time_end", "TEXT DEFAULT '18:00'")
+        ensure_column_sqlite(cur, "users", "hide_private_info", "BOOLEAN DEFAULT 1")
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            author_email TEXT NOT NULL,
+            project_type TEXT DEFAULT 'general',
+            university TEXT DEFAULT '',
+            department TEXT DEFAULT '',
+            course_name TEXT DEFAULT '',
+            professor_name TEXT DEFAULT '',
+            author_role_type TEXT DEFAULT '학생',
+            max_members INTEGER DEFAULT 4,
+            category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            meeting_type TEXT NOT NULL,
+            needed_roles TEXT NOT NULL,
+            needed_disc TEXT NOT NULL,
+            commitment_level TEXT,
+            available_time TEXT,
+            image_url TEXT,
+            created_at TEXT NOT NULL
+        )
+        """)
+        ensure_column_sqlite(cur, "projects", "image_url", "TEXT")
+        ensure_column_sqlite(cur, "projects", "project_type", "TEXT DEFAULT 'general'")
+        ensure_column_sqlite(cur, "projects", "university", "TEXT DEFAULT ''")
+        ensure_column_sqlite(cur, "projects", "department", "TEXT DEFAULT ''")
+        ensure_column_sqlite(cur, "projects", "course_name", "TEXT DEFAULT ''")
+        ensure_column_sqlite(cur, "projects", "professor_name", "TEXT DEFAULT ''")
+        ensure_column_sqlite(cur, "projects", "author_role_type", "TEXT DEFAULT '학생'")
+        ensure_column_sqlite(cur, "projects", "max_members", "INTEGER DEFAULT 4")
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            applicant_email TEXT NOT NULL,
+            applicant_name TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_at TEXT
+        )
+        """)
+        ensure_column_sqlite(cur, "project_applications", "message", "TEXT DEFAULT ''")
+        ensure_column_sqlite(cur, "project_applications", "created_at", "TEXT")
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_members (
+            project_id INTEGER NOT NULL,
+            member_email TEXT NOT NULL,
+            member_name TEXT NOT NULL,
+            role TEXT DEFAULT '팀원',
+            PRIMARY KEY (project_id, member_email)
+        )
+        """)
+        ensure_column_sqlite(cur, "project_members", "role", "TEXT DEFAULT '팀원'")
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            sender_email TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """)
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS pre_chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            inquirer_email TEXT NOT NULL,
+            inquirer_name TEXT NOT NULL,
+            sender_email TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """)
 
     conn.commit()
     conn.close()
@@ -174,6 +368,7 @@ class ProfileUpdate(BaseModel):
     can_present: Optional[bool] = None
     preferred_roles: Optional[List[str]] = None
     is_seeking: Optional[bool] = None
+    hide_private_info: Optional[bool] = None
     available_time_start: Optional[str] = None
     available_time_end: Optional[str] = None
 
@@ -258,16 +453,24 @@ def serve_frontend():
             return f.read()
     return "<h3>index.html 파일을 찾을 수 없습니다.</h3>"
 
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "db_mode": "postgresql" if USE_POSTGRES else "sqlite"}
+
 # ----------------------------------------------------
 # 회원 및 프로필 조회 API
 # ----------------------------------------------------
 @app.post("/api/auth/signup")
 def signup(data: UserSignUp):
     conn = get_db()
+    existing = conn.execute("SELECT 1 FROM users WHERE email = ?", (data.email,)).fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
     try:
         conn.execute(
-            """INSERT INTO users (email, password_hash, name, age, major, education, disc_scores, preferred_roles, available_time_start, available_time_end)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, '09:00', '18:00')""",
+            """INSERT INTO users (email, password_hash, name, age, major, education, disc_scores, preferred_roles, hide_private_info, available_time_start, available_time_end)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, '09:00', '18:00')""",
             (
                 data.email, hash_pw(data.password), data.name, data.age,
                 data.major, data.education,
@@ -276,7 +479,7 @@ def signup(data: UserSignUp):
             )
         )
         conn.commit()
-    except sqlite3.IntegrityError:
+    except Exception:
         raise HTTPException(status_code=400, detail="이미 가입된 이메일입니다.")
     finally:
         conn.close()
@@ -305,6 +508,7 @@ def read_my_profile(current_user: dict = Depends(get_current_user)):
     current_user["preferred_roles"] = json.loads(current_user.get("preferred_roles") or "[]")
     current_user["available_time_start"] = current_user.get("available_time_start") or "09:00"
     current_user["available_time_end"] = current_user.get("available_time_end") or "18:00"
+    current_user["hide_private_info"] = bool(current_user.get("hide_private_info", 1))
     return current_user
 
 @app.get("/api/users/profile")
@@ -317,8 +521,8 @@ def read_public_profile(email: str):
             "email": email,
             "name": "수동 등록 팀원",
             "age": None,
-            "major": "미입력",
-            "education": "미입력",
+            "major": "비공개",
+            "education": "비공개",
             "certifications": "-",
             "awards": "-",
             "portfolio_url": "",
@@ -335,6 +539,11 @@ def read_public_profile(email: str):
     u["preferred_roles"] = json.loads(u.get("preferred_roles") or "[]")
     u["available_time_start"] = u.get("available_time_start") or "09:00"
     u["available_time_end"] = u.get("available_time_end") or "18:00"
+
+    if u.get("hide_private_info", 1):
+        u["age"] = None
+        u["major"] = "비공개"
+        u["education"] = "비공개"
     return u
 
 @app.put("/api/users/me")
@@ -344,6 +553,9 @@ def update_my_profile(update: ProfileUpdate, current_user: dict = Depends(get_cu
         return {"message": "수정할 내용이 없습니다."}
     if "preferred_roles" in fields:
         fields["preferred_roles"] = json.dumps(fields["preferred_roles"], ensure_ascii=False)
+    for bool_col in ("can_present", "is_seeking", "hide_private_info"):
+        if bool_col in fields and fields[bool_col] is not None:
+            fields[bool_col] = 1 if fields[bool_col] else 0
     set_clause = ", ".join([f"{k} = ?" for k in fields.keys()])
     values = list(fields.values()) + [current_user["email"]]
     conn = get_db()
@@ -481,7 +693,8 @@ def get_projects(project_type: Optional[str] = None, university: Optional[str] =
         p["needed_disc"] = json.loads(p["needed_disc"] or "[]")
         p["max_members"] = p.get("max_members") or 4
         mems = conn.execute("SELECT member_name, member_email, role FROM project_members WHERE project_id = ?", (p["id"],)).fetchall()
-        pend_cnt = conn.execute("SELECT COUNT(*) FROM project_applications WHERE project_id = ? AND status = 'pending'", (p["id"],)).fetchone()[0]
+        pend_row = conn.execute("SELECT COUNT(*) AS cnt FROM project_applications WHERE project_id = ? AND status = 'pending'", (p["id"],)).fetchone()
+        pend_cnt = pend_row["cnt"] if isinstance(pend_row, dict) else pend_row[0]
         p["members"] = [dict(m) for m in mems]
         p["member_count"] = len(mems)
         p["pending_count"] = pend_cnt
@@ -507,16 +720,22 @@ def get_my_created_projects(current_user: dict = Depends(get_current_user)):
             (p["id"],)
         ).fetchall()
         apps = conn.execute(
-            """SELECT pa.*, u.major, u.disc_type, u.available_time_start, u.available_time_end
+            """SELECT pa.*, u.major, u.disc_type, u.hide_private_info, u.available_time_start, u.available_time_end
                FROM project_applications pa
                LEFT JOIN users u ON pa.applicant_email = u.email
                WHERE pa.project_id = ? AND pa.status = 'pending'""",
             (p["id"],)
         ).fetchall()
+        app_list = []
+        for a in apps:
+            ad = dict(a)
+            if ad.get("hide_private_info", 1):
+                ad["major"] = "비공개"
+            app_list.append(ad)
         p["members"] = [dict(m) for m in mems]
         p["member_count"] = len(mems)
-        p["pending_applications"] = [dict(a) for a in apps]
-        p["pending_count"] = len(apps)
+        p["pending_applications"] = app_list
+        p["pending_count"] = len(app_list)
         result.append(p)
     conn.close()
     return result
@@ -572,7 +791,8 @@ def add_manual_member(project_id: int, payload: AddMemberPayload, current_user: 
     if not proj or proj["author_email"] != current_user["email"]:
         conn.close()
         raise HTTPException(status_code=403, detail="팀장만 팀원을 직접 추가할 수 있습니다.")
-    cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (project_id,)).fetchone()[0]
+    cnt_row = conn.execute("SELECT COUNT(*) AS cnt FROM project_members WHERE project_id = ?", (project_id,)).fetchone()
+    cur_cnt = cnt_row["cnt"] if isinstance(cnt_row, dict) else cnt_row[0]
     if cur_cnt >= (proj["max_members"] or 4):
         conn.close()
         raise HTTPException(status_code=400, detail="이미 목표 모집 인원이 가득 찼습니다.")
@@ -618,7 +838,8 @@ def apply_project(project_id: int, payload: Optional[ApplyPayload] = None, curre
         conn.close()
         raise HTTPException(status_code=400, detail="본인이 개설한 모집글에는 이미 팀장으로 참여 중입니다.")
 
-    cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (project_id,)).fetchone()[0]
+    cnt_row = conn.execute("SELECT COUNT(*) AS cnt FROM project_members WHERE project_id = ?", (project_id,)).fetchone()
+    cur_cnt = cnt_row["cnt"] if isinstance(cnt_row, dict) else cnt_row[0]
     if cur_cnt >= (proj["max_members"] or 4):
         conn.close()
         raise HTTPException(status_code=400, detail="모집 정원이 마감된 팀입니다.")
@@ -663,7 +884,7 @@ def get_project_applications(project_id: int, current_user: dict = Depends(get_c
         conn.close()
         raise HTTPException(status_code=403, detail="작성자만 조회할 수 있습니다.")
     rows = conn.execute("""
-        SELECT pa.*, u.major, u.disc_type, u.available_time_start, u.available_time_end, u.preferred_roles
+        SELECT pa.*, u.major, u.disc_type, u.hide_private_info, u.available_time_start, u.available_time_end, u.preferred_roles
         FROM project_applications pa
         LEFT JOIN users u ON pa.applicant_email = u.email
         WHERE pa.project_id = ? AND pa.status = 'pending'
@@ -674,6 +895,8 @@ def get_project_applications(project_id: int, current_user: dict = Depends(get_c
     for r in rows:
         d = dict(r)
         d["preferred_roles"] = json.loads(d.get("preferred_roles") or "[]")
+        if d.get("hide_private_info", 1):
+            d["major"] = "비공개"
         res.append(d)
     return res
 
@@ -693,7 +916,8 @@ def application_action(app_id: int, action_data: dict, current_user: dict = Depe
 
     now_str = datetime.datetime.now().strftime("%H:%M")
     if action == "accept":
-        cur_cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (proj["id"],)).fetchone()[0]
+        cnt_row = conn.execute("SELECT COUNT(*) AS cnt FROM project_members WHERE project_id = ?", (proj["id"],)).fetchone()
+        cur_cnt = cnt_row["cnt"] if isinstance(cnt_row, dict) else cnt_row[0]
         if cur_cnt >= (proj["max_members"] or 4):
             conn.close()
             raise HTTPException(status_code=400, detail="목표 팀원 정원이 모두 차서 더 이상 수락할 수 없습니다.")
@@ -761,7 +985,7 @@ def recommend_members(project_id: int):
 
     candidates = conn.execute(
         """SELECT email, name, major, education, disc_type, disc_scores, preferred_roles, can_present,
-                  available_time_start, available_time_end, portfolio_url, certifications, awards
+                  hide_private_info, available_time_start, available_time_end, portfolio_url, certifications, awards
            FROM users WHERE is_seeking = 1 AND email != ?""",
         (proj["author_email"],)
     ).fetchall()
@@ -782,6 +1006,9 @@ def recommend_members(project_id: int):
             reasons.append(f"희망 역할({', '.join(matched_roles)}) 일치")
         if not reasons:
             reasons.append("현재 팀 구직 활성 사용자")
+        if c_dict.get("hide_private_info", 1):
+            c_dict["major"] = "비공개"
+            c_dict["education"] = "비공개"
         c_dict["preferred_roles"] = c_roles
         c_dict["disc_scores"] = json.loads(c_dict["disc_scores"] or "{}")
         c_dict["match_score"] = min(match_score, 100)
@@ -807,7 +1034,8 @@ def get_my_teams(current_user: dict = Depends(get_current_user)):
     teams = []
     for r in rows:
         t = dict(r)
-        cnt = conn.execute("SELECT COUNT(*) FROM project_members WHERE project_id = ?", (t["id"],)).fetchone()[0]
+        cnt_row = conn.execute("SELECT COUNT(*) AS cnt FROM project_members WHERE project_id = ?", (t["id"],)).fetchone()
+        cnt = cnt_row["cnt"] if isinstance(cnt_row, dict) else cnt_row[0]
         last_msg = conn.execute("SELECT message, created_at FROM chat_messages WHERE project_id = ? ORDER BY id DESC LIMIT 1", (t["id"],)).fetchone()
         t["member_count"] = cnt
         t["last_message"] = last_msg["message"] if last_msg else "대화를 시작해보세요!"
@@ -819,14 +1047,20 @@ def get_my_teams(current_user: dict = Depends(get_current_user)):
 def get_project_members(project_id: int):
     conn = get_db()
     rows = conn.execute("""
-        SELECT pm.member_name, pm.member_email, pm.role, u.disc_type, u.major, u.available_time_start, u.available_time_end
+        SELECT pm.member_name, pm.member_email, pm.role, u.disc_type, u.major, u.hide_private_info, u.available_time_start, u.available_time_end
         FROM project_members pm
         LEFT JOIN users u ON pm.member_email = u.email
         WHERE pm.project_id = ?
         ORDER BY CASE WHEN pm.role LIKE '팀장%' THEN 0 ELSE 1 END, pm.member_name ASC
     """, (project_id,)).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    res = []
+    for r in rows:
+        d = dict(r)
+        if d.get("hide_private_info", 1):
+            d["major"] = "비공개"
+        res.append(d)
+    return res
 
 @app.get("/api/projects/{project_id}/messages")
 def get_chat_messages(project_id: int, after_id: int = 0, current_user: dict = Depends(get_current_user)):
@@ -880,13 +1114,12 @@ def post_chat_message(project_id: int, payload: ChatCreate, current_user: dict =
         "created_at": now_str
     }
 
-# 수락 전 사전 채팅 목록 조회
 @app.get("/api/pre-chats")
 def get_my_pre_chats(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     my_email = current_user["email"]
     rows = conn.execute("""
-        SELECT DISTINCT pcm.project_id, pcm.inquirer_email, pcm.inquirer_name,
+        SELECT pcm.id, pcm.project_id, pcm.inquirer_email, pcm.inquirer_name,
                p.title as project_title, p.author_email, u.name as author_name
         FROM pre_chat_messages pcm
         JOIN projects p ON pcm.project_id = p.id
